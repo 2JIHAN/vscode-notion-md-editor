@@ -91,8 +91,12 @@ npm test         # markdown round-trip + 단위 테스트
 
 ## 추천 다음 작업
 
-1. WYSIWYG webview 직렬화도 AST를 거치도록 통합(현재는 DOM 직접 직렬화)
-2. table, image, task list 보존 추가
-3. `notion-sync` metadata(page id, last edited) 형식 정의
-4. `pull/`, `push/` diff 명령 추가
-5. Notion API pull, push 모듈 분리 설계
+세부 backlog은 [`BACKLOG.md`](./BACKLOG.md) 참고. 상위 카테고리는 다음과 같다.
+
+1. A WYSIWYG 잔여 버그, 디테일 (Tab nesting, Backspace 보호 등)
+2. B P0 블록 (체크박스, 토글, 구분선, 이미지, 인라인 색상)
+3. C 편집 UX (slash command, markdown shortcut, drag handle)
+4. B P1 블록 (테이블, 컬럼, 페이지/데이터베이스 임베드)
+5. D Phase 2 Notion sync 워크플로우 명령
+6. E Phase 3 Notion API 연동
+7. F 인프라 (패키징, ESLint, CSP, 엔진 교체)
