@@ -1,0 +1,159 @@
+{
+  "name": "notion-md-editor",
+  "displayName": "Notion Markdown Editor",
+  "description": "Notion-style Markdown editing helpers for callouts and local Notion sync workflows.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "markdown",
+    "notion",
+    "callout",
+    "editor",
+    "preview"
+  ],
+  "activationEvents": [
+    "onCustomEditor:notionMd.wysiwygEditor",
+    "onLanguage:markdown",
+    "onCommand:notionMd.openWysiwyg",
+    "onCommand:notionMd.openPreview",
+    "onCommand:notionMd.insertSuccessCallout",
+    "onCommand:notionMd.insertWarningCallout",
+    "onCommand:notionMd.insertInfoCallout",
+    "onCommand:notionMd.wrapSelectionInCallout"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "notionMd.wysiwygEditor",
+        "displayName": "Notion Markdown Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.md",
+            "scheme": "file"
+          },
+          {
+            "filenamePattern": "*.markdown",
+            "scheme": "file"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "notionMd.openWysiwyg",
+        "title": "Notion Markdown: Open WYSIWYG Editor",
+        "category": "Notion Markdown",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "notionMd.openPreview",
+        "title": "Notion Markdown: Open Preview",
+        "category": "Notion Markdown",
+        "icon": "$(preview)"
+      },
+      {
+        "command": "notionMd.insertSuccessCallout",
+        "title": "Notion Markdown: Insert Success Callout",
+        "category": "Notion Markdown",
+        "icon": "$(pass)"
+      },
+      {
+        "command": "notionMd.insertWarningCallout",
+        "title": "Notion Markdown: Insert Warning Callout",
+        "category": "Notion Markdown",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "notionMd.insertInfoCallout",
+        "title": "Notion Markdown: Insert Info Callout",
+        "category": "Notion Markdown",
+        "icon": "$(info)"
+      },
+      {
+        "command": "notionMd.wrapSelectionInCallout",
+        "title": "Notion Markdown: Wrap Selection in Callout",
+        "category": "Notion Markdown"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "notionMd.openWysiwyg",
+          "when": "editorLangId == markdown",
+          "group": "navigation@0"
+        },
+        {
+          "command": "notionMd.openPreview",
+          "when": "editorLangId == markdown",
+          "group": "navigation@1"
+        },
+        {
+          "command": "notionMd.insertSuccessCallout",
+          "when": "editorLangId == markdown",
+          "group": "navigation@2"
+        },
+        {
+          "command": "notionMd.insertWarningCallout",
+          "when": "editorLangId == markdown",
+          "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "notionMd.wrapSelectionInCallout",
+          "when": "editorLangId == markdown && editorHasSelection",
+          "group": "notionMd@1"
+        },
+        {
+          "command": "notionMd.insertSuccessCallout",
+          "when": "editorLangId == markdown",
+          "group": "notionMd@2"
+        },
+        {
+          "command": "notionMd.insertWarningCallout",
+          "when": "editorLangId == markdown",
+          "group": "notionMd@3"
+        },
+        {
+          "command": "notionMd.insertInfoCallout",
+          "when": "editorLangId == markdown",
+          "group": "notionMd@4"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "notionMd.insertSuccessCallout",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "editorTextFocus && editorLangId == markdown"
+      },
+      {
+        "command": "notionMd.insertWarningCallout",
+        "key": "ctrl+alt+w",
+        "mac": "cmd+alt+w",
+        "when": "editorTextFocus && editorLangId == markdown"
+      }
+    ],
+    "configuration": {
+      "title": "Notion Markdown Editor",
+      "properties": {
+        "notionMd.preview.updateOnType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Update the Notion Markdown preview as the active Markdown document changes."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+# Notion Markdown Editor Development Guide
+
+## 목적
+
+이 문서는 확장을 이어서 개발할 때 필요한 실행, 검증, 변경 기준을 정리한다.
+
+## 실행
+
+1. VS Code에서 프로젝트 폴더를 연다.
+
+```text
+/Users/sonuvis-jihan/agent-workspace/vscode-notion-md-editor
+```
+
+2. `F5`를 눌러 Extension Development Host를 실행한다.
+
+3. 테스트용 VS Code 창에서 `.md` 파일을 연다.
+
+4. Command Palette에서 아래 명령을 실행한다.
+
+```text
+Notion Markdown: Open WYSIWYG Editor
+```
+
+## 주요 명령
+
+| 명령 | 역할 |
+| --- | --- |
+| `Notion Markdown: Open WYSIWYG Editor` | 현재 Markdown 파일을 WYSIWYG custom editor로 열기 |
+| `Notion Markdown: Open Preview` | Notion 스타일 preview 열기 |
+| `Notion Markdown: Insert Success Callout` | 성공 기준 callout 삽입 |
+| `Notion Markdown: Insert Warning Callout` | 경고 callout 삽입 |
+| `Notion Markdown: Insert Info Callout` | 정보 callout 삽입 |
+| `Notion Markdown: Wrap Selection in Callout` | 선택 영역을 callout으로 감싸기 |
+
+## 검증
+
+현재는 별도 build step이 없다. 기본 검사는 아래 명령으로 수행한다.
+
+```bash
+node --check src/extension.js
+node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json ok')"
+```
+
+## 수동 테스트 체크리스트
+
+- `.md` 파일을 기본 editor로 열 수 있음
+- `Open WYSIWYG Editor` 명령으로 custom editor가 열림
+- toolbar에서 H1, H2 적용 가능
+- bold 적용 가능
+- inline code 적용 가능
+- success callout 삽입 가능
+- warning callout 삽입 가능
+- WYSIWYG 수정 후 원본 Markdown에 반영됨
+- 기본 editor에서 `<callout>` snippet 삽입 가능
+- preview에서 callout이 Notion 스타일로 표시됨
+
+## 코드 변경 기준
+
+- `src/extension.js`는 현재 단일 파일이지만 기능이 커지면 모듈 분리
+- renderer와 serializer는 우선 테스트 가능한 순수 함수로 분리
+- Notion API 연동은 editor UI와 분리된 sync 모듈로 작성
+- 외부 dependency 추가 전 번들 크기와 webview CSP 영향 확인
+- Markdown 손실 가능성이 있는 변경은 History에 기록
+
+## 추천 다음 작업
+
+1. `src/markdown.js`로 renderer, serializer 분리
+2. fixture 기반 round-trip 테스트 추가
+3. `docs/fixtures/`에 Notion callout 샘플 문서 추가
+4. `notion-sync` metadata 형식 정의
+5. diff 명령 추가
