@@ -30,6 +30,10 @@
     "onCommand:notionMd.wrapSelectionInCallout"
   ],
   "main": "./src/extension.js",
+  "scripts": {
+    "test": "node test/markdown.test.js",
+    "check": "node --check src/extension.js && node --check src/markdown.js && node --check src/webview.js && node --check src/callouts.js"
+  },
   "contributes": {
     "customEditors": [
       {
