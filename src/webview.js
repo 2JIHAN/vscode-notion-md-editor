@@ -302,14 +302,36 @@ function renderWysiwygEditor(markdown) {
         return;
       }
       if (event.key === 'Enter') {
-        const pre = getAncestor(event.target, 'PRE') || getAncestor(getSelectionAnchor(), 'PRE');
+        const anchor = getSelectionAnchor();
+        const pre = getAncestor(anchor, 'PRE');
         if (pre) {
           event.preventDefault();
           document.execCommand('insertText', false, '\\n');
           scheduleUpdate();
           return;
         }
+        const inlineCode = getAncestor(anchor, 'CODE');
+        if (inlineCode) {
+          event.preventDefault();
+          exitInlineCodeWithNewParagraph(inlineCode);
+          scheduleUpdate();
+          return;
+        }
       }
+    }
+
+    function exitInlineCodeWithNewParagraph(codeEl) {
+      const block = getBlockContainer(codeEl);
+      if (!block || block === editor) return;
+      const newP = document.createElement('p');
+      newP.appendChild(document.createElement('br'));
+      block.parentNode.insertBefore(newP, block.nextSibling);
+      const newRange = document.createRange();
+      newRange.setStart(newP, 0);
+      newRange.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(newRange);
     }
 
     function getSelectionAnchor() {
