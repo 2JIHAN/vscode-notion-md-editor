@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+out/
+dist/
+*.vsix
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor and OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# omc workspace state
+.omc/
