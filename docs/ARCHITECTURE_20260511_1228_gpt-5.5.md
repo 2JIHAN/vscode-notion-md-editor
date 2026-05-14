@@ -16,8 +16,14 @@ vscode-notion-md-editor/
 ├── package.json
 ├── README.md
 ├── src/
-│   └── extension.js
+│   ├── extension.js
+│   ├── markdown.js
+│   ├── callouts.js
+│   └── webview.js
+├── test/
+│   └── markdown.test.js
 └── docs/
+    └── fixtures/
 ```
 
 ## 주요 구성요소
@@ -26,10 +32,15 @@ vscode-notion-md-editor/
 | --- | --- | --- |
 | Extension activation | `src/extension.js` | 명령, decoration, custom editor 등록 |
 | Text editor commands | `src/extension.js` | callout snippet 삽입, 선택 영역 감싸기 |
-| Preview webview | `src/extension.js` | Markdown을 Notion 스타일 HTML로 렌더링 |
 | Custom editor provider | `src/extension.js` | `.md` 파일을 WYSIWYG editor로 표시 |
-| Markdown renderer | `src/extension.js` | Markdown subset을 HTML로 변환 |
-| WYSIWYG serializer | webview script | HTML 편집 결과를 Markdown으로 변환 |
+| Callout 상수 | `src/callouts.js` | success, warning, info kind 정의 |
+| Markdown parser | `src/markdown.js` | markdown 텍스트를 블록 AST로 변환 |
+| Markdown serializer | `src/markdown.js` | 블록 AST를 markdown 텍스트로 변환 |
+| HTML renderer | `src/markdown.js` | 블록 AST를 preview, WYSIWYG용 HTML로 변환 |
+| Preview webview | `src/webview.js` | Notion 스타일 preview 페이지 템플릿 |
+| WYSIWYG webview | `src/webview.js` | `contenteditable` 기반 편집 페이지 템플릿 |
+| WYSIWYG client serializer | `src/webview.js` (inline script) | DOM 편집 결과를 markdown으로 직렬화 |
+| Round-trip 테스트 | `test/markdown.test.js` | parse → serialize → parse AST 비교 |
 
 ## 데이터 흐름
 
@@ -56,20 +67,35 @@ vscode-notion-md-editor/
 
 VS Code `CustomTextEditorProvider` 계열 구조를 따른다. 문서의 실제 source of truth는 VS Code `TextDocument`다. webview는 편집 UI이며, 편집 결과를 Markdown 문자열로 되돌려 문서에 반영한다.
 
+## 블록 AST
+
+`src/markdown.js`는 markdown을 아래 블록 타입 배열로 변환한다.
+
+```text
+{ type: 'frontmatter', raw }
+{ type: 'heading', level, text }
+{ type: 'paragraph', text }
+{ type: 'list', ordered, items: string[] }
+{ type: 'quote', text }
+{ type: 'code', lang, content }
+{ type: 'callout', icon, color, blocks: Block[] }
+{ type: 'html', raw }
+```
+
+서로 다른 표현 사이의 변환은 항상 이 AST를 거친다. 라운드트립 보장은 AST 수준에서 정의한다(`parse → serialize → parse` 결과 AST가 동일해야 한다).
+
 ## Markdown 지원 범위
 
 현재 renderer와 serializer가 안정적으로 지원하는 범위:
 
-- `#`, `##`, `###` heading
+- YAML frontmatter (블록 단위 보존)
+- `#` ~ `######` heading
 - paragraph
-- unordered list
-- ordered list
+- unordered, ordered list
 - blockquote
-- fenced code block
-- inline code
-- bold
-- link
-- `<callout icon="..." color="...">...</callout>`
+- fenced code block (언어 태그 포함)
+- inline code, bold, italic, link
+- `<callout icon="..." color="...">...</callout>` 중첩 블록 포함
 
 제한 범위:
 
@@ -78,8 +104,7 @@ VS Code `CustomTextEditorProvider` 계열 구조를 따른다. 문서의 실제 
 - image
 - task list
 - footnote
-- raw HTML block
-- frontmatter
+- 단순 패턴을 벗어난 raw HTML block
 
 ## Callout 구조
 

@@ -38,9 +38,11 @@ Notion Markdown: Open WYSIWYG Editor
 현재는 별도 build step이 없다. 기본 검사는 아래 명령으로 수행한다.
 
 ```bash
-node --check src/extension.js
-node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package.json ok')"
+npm run check    # 모든 src 모듈 문법 검사
+npm test         # markdown round-trip + 단위 테스트
 ```
+
+`npm test`는 외부 의존성 없이 Node 기본 `assert`로 동작한다.
 
 ## 수동 테스트 체크리스트
 
@@ -65,8 +67,8 @@ node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.
 
 ## 추천 다음 작업
 
-1. `src/markdown.js`로 renderer, serializer 분리
-2. fixture 기반 round-trip 테스트 추가
-3. `docs/fixtures/`에 Notion callout 샘플 문서 추가
-4. `notion-sync` metadata 형식 정의
-5. diff 명령 추가
+1. WYSIWYG webview 직렬화도 AST를 거치도록 통합(현재는 DOM 직접 직렬화)
+2. table, image, task list 보존 추가
+3. `notion-sync` metadata(page id, last edited) 형식 정의
+4. `pull/`, `push/` diff 명령 추가
+5. Notion API pull, push 모듈 분리 설계
