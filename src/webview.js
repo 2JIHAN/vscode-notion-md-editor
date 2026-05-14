@@ -18,16 +18,21 @@ const { CALLOUTS } = require('./callouts');
 
 const COMMON_STYLE = `
   :root {
-    --nme-bg-auto: var(--vscode-editor-background);
-    --nme-fg-auto: var(--vscode-editor-foreground);
-    --nme-quote-border-auto: var(--vscode-textBlockQuote-border);
-    --nme-quote-fg-auto: var(--vscode-textBlockQuote-foreground);
-    --nme-code-bg-auto: var(--vscode-textCodeBlock-background);
-    --nme-border-auto: var(--vscode-editorWidget-border);
-    --nme-muted-auto: var(--vscode-descriptionForeground);
-    --nme-button-bg-auto: var(--vscode-button-secondaryBackground);
-    --nme-button-fg-auto: var(--vscode-button-secondaryForeground);
-    --nme-button-hover-auto: var(--vscode-button-secondaryHoverBackground);
+    --nme-bg-auto: #ffffff;
+    --nme-fg-auto: #37352f;
+    --nme-quote-border-auto: rgba(55, 53, 47, 0.2);
+    --nme-quote-fg-auto: #5f5e5b;
+    --nme-code-bg-auto: rgba(135, 131, 120, 0.15);
+    --nme-code-fg-auto: #EB5757;
+    --nme-pre-bg-auto: rgba(247, 246, 243, 1);
+    --nme-pre-fg-auto: #37352f;
+    --nme-border-auto: rgba(55, 53, 47, 0.12);
+    --nme-muted-auto: rgba(55, 53, 47, 0.5);
+    --nme-button-bg-auto: rgba(55, 53, 47, 0.08);
+    --nme-button-fg-auto: #37352f;
+    --nme-button-hover-auto: rgba(55, 53, 47, 0.16);
+    --nme-font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto, sans-serif;
+    --nme-font-mono: Menlo, "D2Coding", ui-monospace, SFMono-Regular, Monaco, Consolas, "Courier New", monospace;
   }
   [data-theme="light"] {
     --nme-bg-auto: #ffffff;
@@ -35,6 +40,9 @@ const COMMON_STYLE = `
     --nme-quote-border-auto: rgba(55, 53, 47, 0.2);
     --nme-quote-fg-auto: #5f5e5b;
     --nme-code-bg-auto: rgba(135, 131, 120, 0.15);
+    --nme-code-fg-auto: #EB5757;
+    --nme-pre-bg-auto: rgba(247, 246, 243, 1);
+    --nme-pre-fg-auto: #37352f;
     --nme-border-auto: rgba(55, 53, 47, 0.12);
     --nme-muted-auto: rgba(55, 53, 47, 0.5);
     --nme-button-bg-auto: rgba(55, 53, 47, 0.08);
@@ -46,35 +54,60 @@ const COMMON_STYLE = `
     --nme-fg-auto: #e6e6e6;
     --nme-quote-border-auto: rgba(255, 255, 255, 0.2);
     --nme-quote-fg-auto: #cfcfcf;
-    --nme-code-bg-auto: rgba(255, 255, 255, 0.08);
+    --nme-code-bg-auto: rgba(135, 131, 120, 0.25);
+    --nme-code-fg-auto: #FF8B8B;
+    --nme-pre-bg-auto: rgba(255, 255, 255, 0.06);
+    --nme-pre-fg-auto: #e6e6e6;
     --nme-border-auto: rgba(255, 255, 255, 0.1);
     --nme-muted-auto: rgba(255, 255, 255, 0.45);
     --nme-button-bg-auto: rgba(255, 255, 255, 0.06);
     --nme-button-fg-auto: #e6e6e6;
     --nme-button-hover-auto: rgba(255, 255, 255, 0.12);
   }
+  [data-theme="auto"] {
+    --nme-bg-auto: var(--vscode-editor-background);
+    --nme-fg-auto: var(--vscode-editor-foreground);
+    --nme-quote-border-auto: var(--vscode-textBlockQuote-border);
+    --nme-quote-fg-auto: var(--vscode-textBlockQuote-foreground);
+    --nme-code-bg-auto: var(--vscode-textCodeBlock-background);
+    --nme-code-fg-auto: inherit;
+    --nme-pre-bg-auto: var(--vscode-textCodeBlock-background);
+    --nme-pre-fg-auto: var(--vscode-editor-foreground);
+    --nme-border-auto: var(--vscode-editorWidget-border);
+    --nme-muted-auto: var(--vscode-descriptionForeground);
+    --nme-button-bg-auto: var(--vscode-button-secondaryBackground);
+    --nme-button-fg-auto: var(--vscode-button-secondaryForeground);
+    --nme-button-hover-auto: var(--vscode-button-secondaryHoverBackground);
+  }
   body {
     color: var(--nme-fg-auto);
     background: var(--nme-bg-auto);
-    font-family: var(--vscode-font-family);
+    font-family: var(--nme-font-sans);
     line-height: 1.65;
   }
   h1, h2, h3 { line-height: 1.25; }
   code {
     background: var(--nme-code-bg-auto);
+    color: var(--nme-code-fg-auto);
     border-radius: 4px;
     padding: 0.1em 0.35em;
-    font-family: var(--vscode-editor-font-family, monospace);
+    font-family: var(--nme-font-mono);
+    font-size: 0.92em;
   }
   pre {
-    background: var(--nme-code-bg-auto);
+    background: var(--nme-pre-bg-auto);
+    color: var(--nme-pre-fg-auto);
     border-radius: 8px;
     overflow: auto;
     padding: 14px 16px;
+    font-family: var(--nme-font-mono);
+    white-space: pre-wrap;
   }
   pre code {
     background: transparent;
+    color: var(--nme-pre-fg-auto);
     padding: 0;
+    font-size: 1em;
   }
   blockquote {
     border-left: 4px solid var(--nme-quote-border-auto);
@@ -195,14 +228,15 @@ function renderWysiwygEditor(markdown) {
     const themeToggle = document.getElementById('themeToggle');
     const callouts = ${calloutsJson};
     const frontmatter = ${frontmatterJson};
-    const THEMES = ['auto', 'light', 'dark'];
-    const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark' };
+    const THEMES = ['light', 'dark', 'auto'];
+    const THEME_LABELS = { light: 'Light', dark: 'Dark', auto: 'Auto' };
     let timer;
     let themeIndex = 0;
 
     const restored = vscode.getState();
     if (restored && typeof restored.theme === 'string') {
-      themeIndex = Math.max(0, THEMES.indexOf(restored.theme));
+      const found = THEMES.indexOf(restored.theme);
+      if (found >= 0) themeIndex = found;
     }
     applyTheme();
 
@@ -232,11 +266,7 @@ function renderWysiwygEditor(markdown) {
     function applyTheme() {
       const theme = THEMES[themeIndex];
       themeToggle.textContent = THEME_LABELS[theme];
-      if (theme === 'auto') {
-        document.documentElement.removeAttribute('data-theme');
-      } else {
-        document.documentElement.setAttribute('data-theme', theme);
-      }
+      document.documentElement.setAttribute('data-theme', theme);
     }
 
     function handleKeyDown(event) {
@@ -272,11 +302,20 @@ function renderWysiwygEditor(markdown) {
         return;
       }
       if (event.key === 'Enter') {
-        if (convertFencedCodeBlock()) {
+        const pre = getAncestor(event.target, 'PRE') || getAncestor(getSelectionAnchor(), 'PRE');
+        if (pre) {
           event.preventDefault();
+          document.execCommand('insertText', false, '\\n');
           scheduleUpdate();
+          return;
         }
       }
+    }
+
+    function getSelectionAnchor() {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return null;
+      return selection.getRangeAt(0).startContainer;
     }
 
     function runCommand(command) {
@@ -352,9 +391,30 @@ function renderWysiwygEditor(markdown) {
       const range = selection.getRangeAt(0);
       if (!range.collapsed) return;
       const node = range.startContainer;
-      if (node.nodeType !== Node.TEXT_NODE) return;
       if (getAncestor(node, 'CODE') || getAncestor(node, 'PRE')) return;
 
+      const block = getBlockContainer(node);
+      if (block && block !== editor) {
+        const tag = block.tagName.toLowerCase();
+        if (tag === 'p' || tag === 'div') {
+          const blockText = block.textContent;
+          if (blockText.trim() === '\\u0060\\u0060\\u0060') {
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.textContent = '';
+            pre.appendChild(code);
+            block.replaceWith(pre);
+            const newRange = document.createRange();
+            newRange.setStart(code, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+        }
+      }
+
+      if (node.nodeType !== Node.TEXT_NODE) return;
       const offset = range.startOffset;
       const text = node.textContent;
       const head = text.slice(0, offset);
@@ -380,32 +440,6 @@ function renderWysiwygEditor(markdown) {
         selection.removeAllRanges();
         selection.addRange(newRange);
       }
-    }
-
-    function convertFencedCodeBlock() {
-      const selection = window.getSelection();
-      if (!selection.rangeCount) return false;
-      const range = selection.getRangeAt(0);
-      if (!range.collapsed) return false;
-      const block = getBlockContainer(range.startContainer);
-      if (!block || block === editor) return false;
-      const tag = block.tagName.toLowerCase();
-      if (tag !== 'p' && tag !== 'div') return false;
-      const text = block.textContent;
-      const match = /^\`\`\`([\\w.-]*)$/.exec(text.trim());
-      if (!match) return false;
-      const pre = document.createElement('pre');
-      const code = document.createElement('code');
-      if (match[1]) code.setAttribute('data-lang', match[1]);
-      code.textContent = '';
-      pre.appendChild(code);
-      block.replaceWith(pre);
-      const newRange = document.createRange();
-      newRange.setStart(code, 0);
-      newRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(newRange);
-      return true;
     }
 
     function getBlockContainer(node) {

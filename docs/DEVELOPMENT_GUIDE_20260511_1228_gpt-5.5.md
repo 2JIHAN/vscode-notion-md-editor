@@ -57,7 +57,14 @@ npm test         # markdown round-trip + 단위 테스트
 ## WYSIWYG autoformat
 
 - `` `text` `` 입력 시 자동으로 `<code>` 변환
-- 한 줄에 `` ``` `` 또는 `` ```lang `` 만 입력하고 Enter → fenced code block 변환
+- 한 줄에 `` ``` `` 만 입력하면 즉시 fenced code block 변환 (Enter 불필요)
+- 코드 블록 내부 Enter는 새 블록 생성 대신 줄바꿈 삽입
+
+## 폰트
+
+- 본문 system sans-serif (한글 Apple SD Gothic Neo, Malgun Gothic fallback)
+- 코드 Menlo + D2Coding fallback (Nerd Font 변형 사용 안 함)
+- 색상 토큰은 `:root[data-theme="..."]`에 정의된 `--nme-*` 변수 사용
 
 ## 수동 테스트 체크리스트
 
