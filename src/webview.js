@@ -4,33 +4,81 @@
  * markdown 모듈로 본문을 HTML로 렌더링한 뒤 webview용 wrapper에 삽입한다.
  * webview script는 browser context에서 실행되므로, 공유 상수는 JSON으로
  * 직렬화해 inline data로 주입한다.
+ *
+ * 클라이언트 스크립트가 처리하는 기능
+ *   - light, dark, auto 테마 토글 (vscode state 저장)
+ *   - Cmd+Z, Cmd+Shift+Z undo 위임 (contenteditable native)
+ *   - Cmd+E inline code 토글
+ *   - 백틱 한 쌍을 inline code로 자동 변환
+ *   - 세 백틱 + Enter를 fenced code block으로 자동 변환
  */
 
 const { renderHtml, parse } = require('./markdown');
 const { CALLOUTS } = require('./callouts');
 
 const COMMON_STYLE = `
+  :root {
+    --nme-bg-auto: var(--vscode-editor-background);
+    --nme-fg-auto: var(--vscode-editor-foreground);
+    --nme-quote-border-auto: var(--vscode-textBlockQuote-border);
+    --nme-quote-fg-auto: var(--vscode-textBlockQuote-foreground);
+    --nme-code-bg-auto: var(--vscode-textCodeBlock-background);
+    --nme-border-auto: var(--vscode-editorWidget-border);
+    --nme-muted-auto: var(--vscode-descriptionForeground);
+    --nme-button-bg-auto: var(--vscode-button-secondaryBackground);
+    --nme-button-fg-auto: var(--vscode-button-secondaryForeground);
+    --nme-button-hover-auto: var(--vscode-button-secondaryHoverBackground);
+  }
+  [data-theme="light"] {
+    --nme-bg-auto: #ffffff;
+    --nme-fg-auto: #37352f;
+    --nme-quote-border-auto: rgba(55, 53, 47, 0.2);
+    --nme-quote-fg-auto: #5f5e5b;
+    --nme-code-bg-auto: rgba(135, 131, 120, 0.15);
+    --nme-border-auto: rgba(55, 53, 47, 0.12);
+    --nme-muted-auto: rgba(55, 53, 47, 0.5);
+    --nme-button-bg-auto: rgba(55, 53, 47, 0.08);
+    --nme-button-fg-auto: #37352f;
+    --nme-button-hover-auto: rgba(55, 53, 47, 0.16);
+  }
+  [data-theme="dark"] {
+    --nme-bg-auto: #191919;
+    --nme-fg-auto: #e6e6e6;
+    --nme-quote-border-auto: rgba(255, 255, 255, 0.2);
+    --nme-quote-fg-auto: #cfcfcf;
+    --nme-code-bg-auto: rgba(255, 255, 255, 0.08);
+    --nme-border-auto: rgba(255, 255, 255, 0.1);
+    --nme-muted-auto: rgba(255, 255, 255, 0.45);
+    --nme-button-bg-auto: rgba(255, 255, 255, 0.06);
+    --nme-button-fg-auto: #e6e6e6;
+    --nme-button-hover-auto: rgba(255, 255, 255, 0.12);
+  }
   body {
-    color: var(--vscode-editor-foreground);
-    background: var(--vscode-editor-background);
+    color: var(--nme-fg-auto);
+    background: var(--nme-bg-auto);
     font-family: var(--vscode-font-family);
     line-height: 1.65;
   }
   h1, h2, h3 { line-height: 1.25; }
   code {
-    background: var(--vscode-textCodeBlock-background);
+    background: var(--nme-code-bg-auto);
     border-radius: 4px;
     padding: 0.1em 0.35em;
+    font-family: var(--vscode-editor-font-family, monospace);
   }
   pre {
-    background: var(--vscode-textCodeBlock-background);
+    background: var(--nme-code-bg-auto);
     border-radius: 8px;
     overflow: auto;
     padding: 14px 16px;
   }
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
   blockquote {
-    border-left: 4px solid var(--vscode-textBlockQuote-border);
-    color: var(--vscode-textBlockQuote-foreground);
+    border-left: 4px solid var(--nme-quote-border-auto);
+    color: var(--nme-quote-fg-auto);
     margin: 1em 0;
     padding: 0.1em 1em;
   }
@@ -84,8 +132,8 @@ function renderWysiwygEditor(markdown) {
     .toolbar {
       align-items: center;
       backdrop-filter: blur(10px);
-      background: var(--vscode-editor-background);
-      border-bottom: 1px solid var(--vscode-editorWidget-border);
+      background: var(--nme-bg-auto);
+      border-bottom: 1px solid var(--nme-border-auto);
       display: flex;
       gap: 6px;
       padding: 10px 14px;
@@ -94,16 +142,18 @@ function renderWysiwygEditor(markdown) {
       z-index: 2;
     }
     button, select {
-      background: var(--vscode-button-secondaryBackground);
-      border: 1px solid var(--vscode-button-border, transparent);
+      background: var(--nme-button-bg-auto);
+      border: 1px solid transparent;
       border-radius: 6px;
-      color: var(--vscode-button-secondaryForeground);
+      color: var(--nme-button-fg-auto);
       cursor: pointer;
       font: inherit;
       padding: 5px 9px;
     }
-    button:hover, select:hover { background: var(--vscode-button-secondaryHoverBackground); }
-    .status { color: var(--vscode-descriptionForeground); margin-left: auto; }
+    button:hover, select:hover { background: var(--nme-button-hover-auto); }
+    .toolbar .spacer { flex: 1; }
+    .status { color: var(--nme-muted-auto); margin-right: 10px; font-size: 12px; }
+    #themeToggle { min-width: 70px; }
     #editor {
       line-height: 1.65;
       margin: 0 auto;
@@ -113,7 +163,7 @@ function renderWysiwygEditor(markdown) {
       padding: 32px 28px 64px;
     }
     #editor:empty::before {
-      color: var(--vscode-descriptionForeground);
+      color: var(--nme-muted-auto);
       content: 'Notion 스타일 Markdown 작성...';
     }
     h1, h2, h3 { margin: 1.25em 0 0.55em; }
@@ -133,36 +183,108 @@ function renderWysiwygEditor(markdown) {
       <option value="info">💡 정보</option>
     </select>
     <button data-command="callout">Callout</button>
-    <span class="status" id="status">Saved to VS Code document</span>
+    <span class="spacer"></span>
+    <span class="status" id="status">Saved</span>
+    <button id="themeToggle" title="Toggle theme">Auto</button>
   </div>
   <main id="editor" contenteditable="true" spellcheck="true">${body}</main>
   <script>
     const vscode = acquireVsCodeApi();
     const editor = document.getElementById('editor');
     const status = document.getElementById('status');
+    const themeToggle = document.getElementById('themeToggle');
     const callouts = ${calloutsJson};
     const frontmatter = ${frontmatterJson};
+    const THEMES = ['auto', 'light', 'dark'];
+    const THEME_LABELS = { auto: 'Auto', light: 'Light', dark: 'Dark' };
     let timer;
+    let themeIndex = 0;
+
+    const restored = vscode.getState();
+    if (restored && typeof restored.theme === 'string') {
+      themeIndex = Math.max(0, THEMES.indexOf(restored.theme));
+    }
+    applyTheme();
+
+    themeToggle.addEventListener('click', () => {
+      themeIndex = (themeIndex + 1) % THEMES.length;
+      applyTheme();
+      vscode.setState({ theme: THEMES[themeIndex] });
+    });
 
     document.querySelector('.toolbar').addEventListener('click', (event) => {
-      const button = event.target.closest('button');
+      const button = event.target.closest('button[data-command]');
       if (!button) return;
       runCommand(button.dataset.command);
     });
 
-    editor.addEventListener('input', scheduleUpdate);
+    editor.addEventListener('keydown', handleKeyDown);
+    editor.addEventListener('input', () => {
+      runAutoformat();
+      scheduleUpdate();
+    });
     editor.addEventListener('paste', (event) => {
       event.preventDefault();
       const text = event.clipboardData.getData('text/plain');
       document.execCommand('insertText', false, text);
     });
 
+    function applyTheme() {
+      const theme = THEMES[themeIndex];
+      themeToggle.textContent = THEME_LABELS[theme];
+      if (theme === 'auto') {
+        document.documentElement.removeAttribute('data-theme');
+      } else {
+        document.documentElement.setAttribute('data-theme', theme);
+      }
+    }
+
+    function handleKeyDown(event) {
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && !event.shiftKey && event.key === 'z') {
+        event.preventDefault();
+        document.execCommand('undo');
+        scheduleUpdate();
+        return;
+      }
+      if (mod && (event.key === 'Z' || (event.shiftKey && event.key === 'z'))) {
+        event.preventDefault();
+        document.execCommand('redo');
+        scheduleUpdate();
+        return;
+      }
+      if (mod && !event.shiftKey && event.key === 'e') {
+        event.preventDefault();
+        toggleInlineCode();
+        scheduleUpdate();
+        return;
+      }
+      if (mod && !event.shiftKey && event.key === 'b') {
+        event.preventDefault();
+        document.execCommand('bold');
+        scheduleUpdate();
+        return;
+      }
+      if (mod && !event.shiftKey && event.key === 'i') {
+        event.preventDefault();
+        document.execCommand('italic');
+        scheduleUpdate();
+        return;
+      }
+      if (event.key === 'Enter') {
+        if (convertFencedCodeBlock()) {
+          event.preventDefault();
+          scheduleUpdate();
+        }
+      }
+    }
+
     function runCommand(command) {
       editor.focus();
       if (command === 'h1') document.execCommand('formatBlock', false, 'h1');
       if (command === 'h2') document.execCommand('formatBlock', false, 'h2');
       if (command === 'bold') document.execCommand('bold');
-      if (command === 'code') wrapSelection('code');
+      if (command === 'code') toggleInlineCode();
       if (command === 'callout') insertCallout();
       scheduleUpdate();
     }
@@ -173,15 +295,126 @@ function renderWysiwygEditor(markdown) {
       document.execCommand('insertHTML', false, html);
     }
 
-    function wrapSelection(tagName) {
+    function toggleInlineCode() {
       const selection = window.getSelection();
-      if (!selection.rangeCount || selection.isCollapsed) return;
+      if (!selection.rangeCount) return;
       const range = selection.getRangeAt(0);
-      const element = document.createElement(tagName);
-      element.textContent = range.toString();
+      const codeAncestor = getAncestor(range.startContainer, 'CODE');
+      if (codeAncestor) {
+        const text = codeAncestor.textContent;
+        const parent = codeAncestor.parentNode;
+        const textNode = document.createTextNode(text);
+        parent.replaceChild(textNode, codeAncestor);
+        const newRange = document.createRange();
+        newRange.setStart(textNode, text.length);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        return;
+      }
+      if (range.collapsed) {
+        const code = document.createElement('code');
+        code.appendChild(document.createTextNode('\\u200b'));
+        range.insertNode(code);
+        const newRange = document.createRange();
+        newRange.setStart(code.firstChild, 1);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        return;
+      }
+      const text = range.toString();
       range.deleteContents();
-      range.insertNode(element);
+      const code = document.createElement('code');
+      code.textContent = text;
+      range.insertNode(code);
+      const newRange = document.createRange();
+      newRange.setStartAfter(code);
+      newRange.collapse(true);
       selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+
+    function getAncestor(node, tag) {
+      let current = node;
+      while (current && current !== editor) {
+        if (current.nodeType === Node.ELEMENT_NODE && current.tagName === tag) {
+          return current;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    }
+
+    function runAutoformat() {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return;
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return;
+      if (getAncestor(node, 'CODE') || getAncestor(node, 'PRE')) return;
+
+      const offset = range.startOffset;
+      const text = node.textContent;
+      const head = text.slice(0, offset);
+      const tail = text.slice(offset);
+
+      const inlineMatch = /(^|[^\`])\`([^\`\\n]+)\`$/.exec(head);
+      if (inlineMatch) {
+        const matched = inlineMatch[0];
+        const codeText = inlineMatch[2];
+        const before = head.slice(0, head.length - matched.length) + inlineMatch[1];
+        const parent = node.parentNode;
+        const beforeNode = document.createTextNode(before);
+        const afterNode = document.createTextNode(tail);
+        const code = document.createElement('code');
+        code.textContent = codeText;
+        parent.insertBefore(beforeNode, node);
+        parent.insertBefore(code, node);
+        parent.insertBefore(afterNode, node);
+        parent.removeChild(node);
+        const newRange = document.createRange();
+        newRange.setStart(afterNode, 0);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    }
+
+    function convertFencedCodeBlock() {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return false;
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return false;
+      const block = getBlockContainer(range.startContainer);
+      if (!block || block === editor) return false;
+      const tag = block.tagName.toLowerCase();
+      if (tag !== 'p' && tag !== 'div') return false;
+      const text = block.textContent;
+      const match = /^\`\`\`([\\w.-]*)$/.exec(text.trim());
+      if (!match) return false;
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      if (match[1]) code.setAttribute('data-lang', match[1]);
+      code.textContent = '';
+      pre.appendChild(code);
+      block.replaceWith(pre);
+      const newRange = document.createRange();
+      newRange.setStart(code, 0);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      return true;
+    }
+
+    function getBlockContainer(node) {
+      let current = node;
+      if (current.nodeType === Node.TEXT_NODE) current = current.parentNode;
+      while (current && current !== editor && current.parentNode !== editor) {
+        current = current.parentNode;
+      }
+      return current;
     }
 
     function scheduleUpdate() {
@@ -191,7 +424,7 @@ function renderWysiwygEditor(markdown) {
         const body = editorToMarkdown(editor);
         const markdown = frontmatter ? frontmatter + '\\n\\n' + body : body;
         vscode.postMessage({ type: 'update', markdown: markdown });
-        status.textContent = 'Saved to VS Code document';
+        status.textContent = 'Saved';
       }, 250);
     }
 
@@ -211,7 +444,12 @@ function renderWysiwygEditor(markdown) {
         return inlineMarkdown(node).trim();
       }
       if (tag === 'blockquote') return inlineMarkdown(node).split('\\n').map(line => '> ' + line).join('\\n');
-      if (tag === 'pre') return '\\u0060\\u0060\\u0060\\n' + node.textContent.replace(/\\n+$/, '') + '\\n\\u0060\\u0060\\u0060';
+      if (tag === 'pre') {
+        const codeChild = node.querySelector('code');
+        const lang = codeChild && codeChild.getAttribute('data-lang') ? codeChild.getAttribute('data-lang') : '';
+        const content = (codeChild ? codeChild.textContent : node.textContent).replace(/\\n+$/, '');
+        return '\\u0060\\u0060\\u0060' + lang + '\\n' + content + '\\n\\u0060\\u0060\\u0060';
+      }
       if (tag === 'ul') return Array.from(node.children).map(li => '- ' + inlineMarkdown(li)).join('\\n');
       if (tag === 'ol') return Array.from(node.children).map((li, index) => (index + 1) + '. ' + inlineMarkdown(li)).join('\\n');
       return inlineMarkdown(node).trim();
@@ -227,13 +465,13 @@ function renderWysiwygEditor(markdown) {
 
     function inlineMarkdown(node) {
       return Array.from(node.childNodes).map((child) => {
-        if (child.nodeType === Node.TEXT_NODE) return child.textContent.replace(/\\s+/g, ' ');
+        if (child.nodeType === Node.TEXT_NODE) return child.textContent.replace(/\\s+/g, ' ').replace(/\\u200b/g, '');
         if (child.nodeType !== Node.ELEMENT_NODE) return '';
         const tag = child.tagName.toLowerCase();
         const text = inlineMarkdown(child);
         if (tag === 'strong' || tag === 'b') return '**' + text + '**';
         if (tag === 'em' || tag === 'i') return '*' + text + '*';
-        if (tag === 'code') return '\\u0060' + child.textContent + '\\u0060';
+        if (tag === 'code') return '\\u0060' + child.textContent.replace(/\\u200b/g, '') + '\\u0060';
         if (tag === 'br') return '';
         if (tag === 'a') return '[' + text + '](' + child.getAttribute('href') + ')';
         return text;

@@ -44,16 +44,33 @@ npm test         # markdown round-trip + 단위 테스트
 
 `npm test`는 외부 의존성 없이 Node 기본 `assert`로 동작한다.
 
+## WYSIWYG 단축키
+
+| 단축키 | 동작 |
+| --- | --- |
+| `Cmd+B` | Bold 토글 |
+| `Cmd+I` | Italic 토글 |
+| `Cmd+E` | Inline code 토글 |
+| `Cmd+Z` | Undo (contenteditable native) |
+| `Cmd+Shift+Z` | Redo |
+
+## WYSIWYG autoformat
+
+- `` `text` `` 입력 시 자동으로 `<code>` 변환
+- 한 줄에 `` ``` `` 또는 `` ```lang `` 만 입력하고 Enter → fenced code block 변환
+
 ## 수동 테스트 체크리스트
 
 - `.md` 파일을 기본 editor로 열 수 있음
 - `Open WYSIWYG Editor` 명령으로 custom editor가 열림
 - toolbar에서 H1, H2 적용 가능
-- bold 적용 가능
-- inline code 적용 가능
-- success callout 삽입 가능
-- warning callout 삽입 가능
+- bold, inline code 적용 가능
+- success, warning callout 삽입 가능
 - WYSIWYG 수정 후 원본 Markdown에 반영됨
+- WYSIWYG에서 Cmd+Z로 직전 입력 되돌리기 가능
+- 백틱 한 쌍으로 inline code 자동 변환 동작
+- 백틱 세 개 + Enter로 fenced code block 자동 변환 동작
+- 상단 우측 테마 토글 버튼으로 Auto, Light, Dark 순환 가능
 - 기본 editor에서 `<callout>` snippet 삽입 가능
 - preview에서 callout이 Notion 스타일로 표시됨
 
