@@ -8,7 +8,6 @@
 - [ ] 코드 블록 언어 표기를 WYSIWYG에서 변경할 수 있는 UI
 - [ ] 리스트 안에서 Tab으로 nesting
 - [ ] H4-H6 toolbar 또는 단축키 노출
-- [ ] 빈 callout 본문에서 Backspace 시 callout 통째 삭제 방지
 - [ ] paste된 텍스트에 inline style(`b`, `i`, `code`) 손실 가능 검토
 - [ ] WYSIWYG에서 외부 문서 변경 감지해 webview 재로드(현재는 webview가 source of truth로 동작)
 
@@ -20,7 +19,6 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 
 - [ ] 체크박스 `- [ ] / - [x]`
 - [ ] 토글 `<details><summary>...</summary>...</details>`
-- [ ] 구분선 `---`
 - [ ] 이미지 `![alt](url)` + drag-and-drop 업로드
 - [ ] 인라인 색상 `{color="..."}`와 배경색
 
@@ -76,7 +74,6 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 ## F 인프라
 
 - [ ] Marketplace 패키징 `vsce package`, icon, changelog, license
-- [ ] ESLint, prettier 설정
 - [ ] WYSIWYG webview script를 별도 `.js` 파일로 분리 + CSP 정의
 - [ ] 외부 markdown parser(`markdown-it`, `remark`) 도입 검토
 - [ ] WYSIWYG 엔진 교체 검토 (ProseMirror, TipTap, Milkdown, Lexical)
