@@ -902,7 +902,8 @@ function renderWysiwygEditor(markdown) {
           }
 
           // 라인 첫머리 + space 트리거 (heading / list / todo / blockquote / toggle)
-          const cleanText = blockText.replace(/\\u200b/g, '');
+          // contenteditable이 끝 공백을 \\u00a0(nbsp)로 치환하므로 정규화한다.
+          const cleanText = blockText.replace(/\\u200b/g, '').replace(/\\u00a0/g, ' ');
           const headingMatch = /^(#{1,6}) $/.exec(cleanText);
           if (headingMatch) {
             const level = headingMatch[1].length;
