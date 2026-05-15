@@ -301,6 +301,16 @@ function renderWysiwygEditor(markdown) {
         scheduleUpdate();
         return;
       }
+      if (event.key === 'Backspace') {
+        const anchor = getSelectionAnchor();
+        const calloutContent = getCalloutContent(anchor);
+        if (calloutContent && isCalloutBodyEmpty(calloutContent) && isCursorAtStart()) {
+          event.preventDefault();
+          convertCalloutToParagraph(calloutContent.closest('.callout'));
+          scheduleUpdate();
+          return;
+        }
+      }
       if (event.key === 'Enter') {
         const anchor = getSelectionAnchor();
         const pre = getAncestor(anchor, 'PRE');
@@ -338,6 +348,45 @@ function renderWysiwygEditor(markdown) {
       const selection = window.getSelection();
       if (!selection.rangeCount) return null;
       return selection.getRangeAt(0).startContainer;
+    }
+
+    function getCalloutContent(node) {
+      let current = node;
+      while (current && current !== editor) {
+        if (current.nodeType === Node.ELEMENT_NODE && current.classList && current.classList.contains('callout-content')) {
+          return current;
+        }
+        current = current.parentNode;
+      }
+      return null;
+    }
+
+    function isCalloutBodyEmpty(calloutContent) {
+      const text = calloutContent.textContent.replace(/\\u200b/g, '').trim();
+      if (text !== '') return false;
+      return true;
+    }
+
+    function isCursorAtStart() {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return false;
+      const range = selection.getRangeAt(0);
+      if (!range.collapsed) return false;
+      return range.startOffset === 0;
+    }
+
+    function convertCalloutToParagraph(calloutEl) {
+      if (!calloutEl) return;
+      const newP = document.createElement('p');
+      newP.appendChild(document.createElement('br'));
+      calloutEl.parentNode.insertBefore(newP, calloutEl);
+      calloutEl.remove();
+      const newRange = document.createRange();
+      newRange.setStart(newP, 0);
+      newRange.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(newRange);
     }
 
     function runCommand(command) {
