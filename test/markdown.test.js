@@ -42,23 +42,17 @@ test('parse paragraph joins wrapped lines', () => {
 
 test('parse unordered list', () => {
   const blocks = parse('- a\n- b\n');
-  assert.deepStrictEqual(blocks, [
-    { type: 'list', ordered: false, items: ['a', 'b'] }
-  ]);
+  assert.deepStrictEqual(blocks, [{ type: 'list', ordered: false, items: ['a', 'b'] }]);
 });
 
 test('parse ordered list', () => {
   const blocks = parse('1. first\n2. second\n');
-  assert.deepStrictEqual(blocks, [
-    { type: 'list', ordered: true, items: ['first', 'second'] }
-  ]);
+  assert.deepStrictEqual(blocks, [{ type: 'list', ordered: true, items: ['first', 'second'] }]);
 });
 
 test('parse code block keeps lang and content', () => {
   const blocks = parse('```bash\necho hi\nls\n```');
-  assert.deepStrictEqual(blocks, [
-    { type: 'code', lang: 'bash', content: 'echo hi\nls' }
-  ]);
+  assert.deepStrictEqual(blocks, [{ type: 'code', lang: 'bash', content: 'echo hi\nls' }]);
 });
 
 test('parse callout preserves icon, color, nested blocks', () => {

@@ -207,7 +207,7 @@ function matchCalloutOpen(line) {
   };
 }
 
-function collectCallout(lines, start, openInfo) {
+function collectCallout(lines, start, _openInfo) {
   const bodyLines = [];
   let depth = 1;
   let i = start + 1;

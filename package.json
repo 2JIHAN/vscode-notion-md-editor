@@ -32,7 +32,11 @@
   "main": "./src/extension.js",
   "scripts": {
     "test": "node test/markdown.test.js",
-    "check": "node --check src/extension.js && node --check src/markdown.js && node --check src/webview.js && node --check src/callouts.js"
+    "check": "node --check src/extension.js && node --check src/markdown.js && node --check src/webview.js && node --check src/callouts.js",
+    "lint": "eslint src test",
+    "lint:fix": "eslint --fix src test",
+    "format": "prettier --write src test",
+    "format:check": "prettier --check src test"
   },
   "contributes": {
     "customEditors": [
@@ -159,5 +163,10 @@
         }
       }
     }
+  },
+  "devDependencies": {
+    "eslint": "^10.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3"
   }
 }

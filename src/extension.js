@@ -17,27 +17,35 @@ function activate(context) {
   });
 
   context.subscriptions.push(calloutDecoration);
-  context.subscriptions.push(vscode.window.registerCustomEditorProvider(
-    'notionMd.wysiwygEditor',
-    new NotionMarkdownEditorProvider(context),
-    {
+  context.subscriptions.push(
+    vscode.window.registerCustomEditorProvider('notionMd.wysiwygEditor', new NotionMarkdownEditorProvider(context), {
       webviewOptions: { retainContextWhenHidden: true },
       supportsMultipleEditorsPerDocument: false
-    }
-  ));
+    })
+  );
   context.subscriptions.push(vscode.commands.registerCommand('notionMd.openWysiwyg', openWysiwyg));
   context.subscriptions.push(vscode.commands.registerCommand('notionMd.openPreview', openPreview));
-  context.subscriptions.push(vscode.commands.registerCommand('notionMd.insertSuccessCallout', () => insertCallout(CALLOUTS.success)));
-  context.subscriptions.push(vscode.commands.registerCommand('notionMd.insertWarningCallout', () => insertCallout(CALLOUTS.warning)));
-  context.subscriptions.push(vscode.commands.registerCommand('notionMd.insertInfoCallout', () => insertCallout(CALLOUTS.info)));
-  context.subscriptions.push(vscode.commands.registerCommand('notionMd.wrapSelectionInCallout', wrapSelectionInCallout));
+  context.subscriptions.push(
+    vscode.commands.registerCommand('notionMd.insertSuccessCallout', () => insertCallout(CALLOUTS.success))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('notionMd.insertWarningCallout', () => insertCallout(CALLOUTS.warning))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('notionMd.insertInfoCallout', () => insertCallout(CALLOUTS.info))
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('notionMd.wrapSelectionInCallout', wrapSelectionInCallout)
+  );
   context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(updateDecorations));
-  context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((event) => {
-    if (vscode.window.activeTextEditor && event.document === vscode.window.activeTextEditor.document) {
-      updateDecorations(vscode.window.activeTextEditor);
-      updatePreviewIfNeeded(event.document);
-    }
-  }));
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument((event) => {
+      if (vscode.window.activeTextEditor && event.document === vscode.window.activeTextEditor.document) {
+        updateDecorations(vscode.window.activeTextEditor);
+        updatePreviewIfNeeded(event.document);
+      }
+    })
+  );
 
   updateDecorations(vscode.window.activeTextEditor);
 }
@@ -69,10 +77,7 @@ class NotionMarkdownEditorProvider {
       }
 
       const edit = new vscode.WorkspaceEdit();
-      const fullRange = new vscode.Range(
-        document.positionAt(0),
-        document.positionAt(document.getText().length)
-      );
+      const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length));
       edit.replace(document.uri, fullRange, message.markdown);
       await vscode.workspace.applyEdit(edit);
     });
