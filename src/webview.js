@@ -304,7 +304,7 @@ function renderWysiwygEditor(markdown) {
       if (event.key === 'Backspace') {
         const anchor = getSelectionAnchor();
         const calloutContent = getCalloutContent(anchor);
-        if (calloutContent && isCalloutBodyEmpty(calloutContent) && isCursorAtStart()) {
+        if (calloutContent && isCalloutBodyEmpty(calloutContent) && isCursorAtStart(calloutContent)) {
           event.preventDefault();
           convertCalloutToParagraph(calloutContent.closest('.callout'));
           scheduleUpdate();
@@ -361,18 +361,40 @@ function renderWysiwygEditor(markdown) {
       return null;
     }
 
-    function isCalloutBodyEmpty(calloutContent) {
-      const text = calloutContent.textContent.replace(/\\u200b/g, '').trim();
-      if (text !== '') return false;
-      return true;
+    function stripZwsAndTrim(str) {
+      return str.replace(/​/g, '').trim();
     }
 
-    function isCursorAtStart() {
+    function isCalloutBodyEmpty(calloutContent) {
+      return stripZwsAndTrim(calloutContent.textContent) === '';
+    }
+
+    function isCursorAtStart(calloutContent) {
       const selection = window.getSelection();
       if (!selection.rangeCount) return false;
       const range = selection.getRangeAt(0);
       if (!range.collapsed) return false;
-      return range.startOffset === 0;
+      if (range.startOffset !== 0) return false;
+      // Walk from the cursor's startContainer up to calloutContent, verifying
+      // that every node along the path is the first non-whitespace-text child
+      // of its parent. This ensures the cursor is truly at the very beginning
+      // of the callout body, not merely at offset 0 of some inner node.
+      let node = range.startContainer;
+      while (node && node !== calloutContent) {
+        const parent = node.parentNode;
+        if (!parent) return false;
+        // Find the first child that is not a pure-whitespace text node
+        let firstMeaningful = null;
+        for (let i = 0; i < parent.childNodes.length; i++) {
+          const child = parent.childNodes[i];
+          if (child.nodeType === Node.TEXT_NODE && child.textContent.trim() === '') continue;
+          firstMeaningful = child;
+          break;
+        }
+        if (node !== firstMeaningful) return false;
+        node = parent;
+      }
+      return true;
     }
 
     function convertCalloutToParagraph(calloutEl) {

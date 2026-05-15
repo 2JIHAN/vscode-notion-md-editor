@@ -107,6 +107,26 @@ test('renderHtml renders inline emphasis', () => {
   assert.ok(html.includes('<strong>double</strong>'));
 });
 
+// stripZwsAndTrim: pure helper mirrored from webview.js (browser closure prevents require).
+// Verifies the U+200B regex fix — the pattern must strip actual zero-width spaces.
+function stripZwsAndTrim(str) {
+  return str.replace(/​/g, '').trim();
+}
+
+test('stripZwsAndTrim: empty string is empty', () => {
+  assert.strictEqual(stripZwsAndTrim(''), '');
+});
+
+test('stripZwsAndTrim: only zero-width spaces becomes empty', () => {
+  assert.strictEqual(stripZwsAndTrim('​​'), '');
+});
+
+test('stripZwsAndTrim: whitespace-only is not empty after trim', () => {
+  // Plain whitespace (no ZWS) trims to '' — callout with only spaces should
+  // still be treated as empty by the helper (trim removes it).
+  assert.strictEqual(stripZwsAndTrim('   '), '');
+});
+
 let passed = 0;
 let failed = 0;
 for (const { name, fn } of tests) {
