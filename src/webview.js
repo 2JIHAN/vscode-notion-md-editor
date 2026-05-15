@@ -135,6 +135,42 @@ const COMMON_STYLE = `
     border-top: 1px solid var(--nme-border-auto);
     margin: 1.5em 0;
   }
+  ul.todo-list {
+    list-style: none;
+    padding-left: 0;
+  }
+  ul.todo-list > li.todo-item {
+    align-items: flex-start;
+    display: flex;
+    gap: 8px;
+    margin: 4px 0;
+  }
+  ul.todo-list > li.todo-item > input[type="checkbox"] {
+    cursor: pointer;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  ul.todo-list > li.todo-item.checked > .todo-text {
+    color: var(--nme-muted-auto);
+    text-decoration: line-through;
+  }
+  details.toggle {
+    margin: 0.5em 0;
+    padding: 4px 0 4px 4px;
+  }
+  details.toggle > summary {
+    cursor: pointer;
+    list-style: revert;
+    padding: 2px 0;
+  }
+  details.toggle > .toggle-content {
+    margin: 4px 0 4px 18px;
+    outline: none;
+  }
+  del, s {
+    color: var(--nme-muted-auto);
+    text-decoration: line-through;
+  }
 `;
 
 function renderPreview(markdown) {
@@ -522,6 +558,109 @@ function renderWysiwygEditor(markdown) {
             selection.addRange(newRange);
             return;
           }
+
+          // 라인 첫머리 + space 트리거 (heading / list / todo / blockquote / toggle)
+          const cleanText = blockText.replace(/\\u200b/g, '');
+          const headingMatch = /^(#{1,6}) $/.exec(cleanText);
+          if (headingMatch) {
+            const level = headingMatch[1].length;
+            const h = document.createElement('h' + level);
+            h.appendChild(document.createElement('br'));
+            block.replaceWith(h);
+            const newRange = document.createRange();
+            newRange.setStart(h, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+          const todoMatch = /^\\[([ xX]?)\\] $/.exec(cleanText);
+          if (todoMatch) {
+            const checked = todoMatch[1].toLowerCase() === 'x';
+            const ul = document.createElement('ul');
+            ul.className = 'todo-list';
+            const li = document.createElement('li');
+            li.className = checked ? 'todo-item checked' : 'todo-item';
+            li.setAttribute('data-checked', String(checked));
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.contentEditable = 'false';
+            if (checked) cb.setAttribute('checked', '');
+            const span = document.createElement('span');
+            span.className = 'todo-text';
+            span.appendChild(document.createElement('br'));
+            li.appendChild(cb);
+            li.appendChild(span);
+            ul.appendChild(li);
+            block.replaceWith(ul);
+            const newRange = document.createRange();
+            newRange.setStart(span, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+          if (/^[-*+] $/.test(cleanText)) {
+            const ul = document.createElement('ul');
+            const li = document.createElement('li');
+            li.appendChild(document.createElement('br'));
+            ul.appendChild(li);
+            block.replaceWith(ul);
+            const newRange = document.createRange();
+            newRange.setStart(li, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+          const olMatch = /^(\\d+)\\. $/.exec(cleanText);
+          if (olMatch) {
+            const ol = document.createElement('ol');
+            const startNum = parseInt(olMatch[1], 10);
+            if (startNum !== 1) ol.setAttribute('start', String(startNum));
+            const li = document.createElement('li');
+            li.appendChild(document.createElement('br'));
+            ol.appendChild(li);
+            block.replaceWith(ol);
+            const newRange = document.createRange();
+            newRange.setStart(li, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+          if (cleanText === '" ') {
+            const bq = document.createElement('blockquote');
+            bq.appendChild(document.createElement('br'));
+            block.replaceWith(bq);
+            const newRange = document.createRange();
+            newRange.setStart(bq, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
+          if (cleanText === '> ') {
+            const det = document.createElement('details');
+            det.className = 'toggle';
+            det.open = true;
+            const summary = document.createElement('summary');
+            summary.textContent = '토글';
+            const content = document.createElement('div');
+            content.className = 'toggle-content';
+            const p = document.createElement('p');
+            p.appendChild(document.createElement('br'));
+            content.appendChild(p);
+            det.appendChild(summary);
+            det.appendChild(content);
+            block.replaceWith(det);
+            // 사용자가 즉시 요약을 덮어쓸 수 있도록 전체 선택
+            const newRange = document.createRange();
+            newRange.selectNodeContents(summary);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
         }
       }
 
@@ -584,8 +723,12 @@ function renderWysiwygEditor(markdown) {
       if (tag === 'h1') return '# ' + inlineMarkdown(node);
       if (tag === 'h2') return '## ' + inlineMarkdown(node);
       if (tag === 'h3') return '### ' + inlineMarkdown(node);
+      if (tag === 'h4') return '#### ' + inlineMarkdown(node);
+      if (tag === 'h5') return '##### ' + inlineMarkdown(node);
+      if (tag === 'h6') return '###### ' + inlineMarkdown(node);
       if (tag === 'p' || tag === 'div') {
         if (node.classList.contains('callout')) return calloutToMarkdown(node);
+        if (node.classList.contains('toggle-content')) return inlineMarkdown(node).trim();
         return inlineMarkdown(node).trim();
       }
       if (tag === 'blockquote') return inlineMarkdown(node).split('\\n').map(line => '> ' + line).join('\\n');
@@ -596,9 +739,46 @@ function renderWysiwygEditor(markdown) {
         return '\\u0060\\u0060\\u0060' + lang + '\\n' + content + '\\n\\u0060\\u0060\\u0060';
       }
       if (tag === 'hr') return '---';
-      if (tag === 'ul') return Array.from(node.children).map(li => '- ' + inlineMarkdown(li)).join('\\n');
+      if (tag === 'ul') {
+        if (node.classList.contains('todo-list')) return todoToMarkdown(node);
+        return Array.from(node.children).map(li => '- ' + todoOrInline(li)).join('\\n');
+      }
       if (tag === 'ol') return Array.from(node.children).map((li, index) => (index + 1) + '. ' + inlineMarkdown(li)).join('\\n');
+      if (tag === 'details') return toggleToMarkdown(node);
       return inlineMarkdown(node).trim();
+    }
+
+    function todoOrInline(li) {
+      // 일반 ul 안에 todo-item이 섞여 있을 때를 위한 폴백
+      if (li.classList && li.classList.contains('todo-item')) {
+        const checked = li.getAttribute('data-checked') === 'true' || li.querySelector('input[type="checkbox"]:checked');
+        const span = li.querySelector('.todo-text');
+        const text = span ? inlineMarkdown(span) : inlineMarkdown(li);
+        return '[' + (checked ? 'x' : ' ') + '] ' + text;
+      }
+      return inlineMarkdown(li);
+    }
+
+    function todoToMarkdown(node) {
+      return Array.from(node.children).map((li) => {
+        const cb = li.querySelector('input[type="checkbox"]');
+        const checked = (cb && cb.checked) || li.getAttribute('data-checked') === 'true';
+        const span = li.querySelector('.todo-text');
+        const text = span ? inlineMarkdown(span) : inlineMarkdown(li);
+        return '- [' + (checked ? 'x' : ' ') + '] ' + text;
+      }).join('\\n');
+    }
+
+    function toggleToMarkdown(node) {
+      const summaryEl = node.querySelector(':scope > summary');
+      const summary = summaryEl ? inlineMarkdown(summaryEl) : '';
+      const contentEl = node.querySelector(':scope > .toggle-content') || node;
+      const innerNodes = contentEl === node
+        ? Array.from(node.childNodes).filter(child => !(child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'summary'))
+        : Array.from(contentEl.childNodes);
+      const inner = innerNodes.map(nodeToMarkdown).filter(Boolean).join('\\n\\n').trim();
+      const innerPart = inner ? '\\n\\n' + inner + '\\n' : '\\n';
+      return '<details>\\n<summary>' + summary + '</summary>' + innerPart + '</details>';
     }
 
     function calloutToMarkdown(node) {
@@ -617,9 +797,11 @@ function renderWysiwygEditor(markdown) {
         const text = inlineMarkdown(child);
         if (tag === 'strong' || tag === 'b') return '**' + text + '**';
         if (tag === 'em' || tag === 'i') return '*' + text + '*';
+        if (tag === 'del' || tag === 's' || tag === 'strike') return '~~' + text + '~~';
         if (tag === 'code') return '\\u0060' + child.textContent.replace(/\\u200b/g, '') + '\\u0060';
         if (tag === 'br') return '';
         if (tag === 'a') return '[' + text + '](' + child.getAttribute('href') + ')';
+        if (tag === 'input' && child.type === 'checkbox') return '';
         return text;
       }).join('').trim();
     }
