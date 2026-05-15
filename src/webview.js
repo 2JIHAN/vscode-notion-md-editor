@@ -670,26 +670,97 @@ function renderWysiwygEditor(markdown) {
       const head = text.slice(0, offset);
       const tail = text.slice(offset);
 
-      const inlineMatch = /(^|[^\`])\`([^\`\\n]+)\`$/.exec(head);
-      if (inlineMatch) {
-        const matched = inlineMatch[0];
-        const codeText = inlineMatch[2];
-        const before = head.slice(0, head.length - matched.length) + inlineMatch[1];
+      // 인라인 코드 \`...\` (기존 동작)
+      if (tryInlineReplace(node, head, tail, /(^|[^\`])\`([^\`\\n]+)\`$/, (inner) => {
+        const code = document.createElement('code');
+        code.textContent = inner;
+        return code;
+      })) return;
+
+      // bold **...**
+      if (tryInlineReplace(node, head, tail, /(^|[^*])\\*\\*([^*\\n]+?)\\*\\*$/, (inner) => {
+        const el = document.createElement('strong');
+        el.textContent = inner;
+        return el;
+      })) return;
+
+      // italic *...* (앞이 * 가 아니고 뒤에도 * 가 오지 않을 때)
+      if (tryInlineReplace(node, head, tail, /(^|[^*])\\*([^*\\n]+?)\\*(?!\\*)$/, (inner) => {
+        const el = document.createElement('em');
+        el.textContent = inner;
+        return el;
+      })) return;
+
+      // italic _..._ (단어 중간 underscore 제외)
+      if (tryInlineReplace(node, head, tail, /(^|[^_\\w])_([^_\\n]+?)_(?!\\w)$/, (inner) => {
+        const el = document.createElement('em');
+        el.textContent = inner;
+        return el;
+      })) return;
+
+      // strikethrough ~~...~~
+      if (tryInlineReplace(node, head, tail, /(^|[^~])~~([^~\\n]+?)~~$/, (inner) => {
+        const el = document.createElement('del');
+        el.textContent = inner;
+        return el;
+      })) return;
+
+      // strikethrough ~...~ (단일 ~ ~, 노션 호환)
+      if (tryInlineReplace(node, head, tail, /(^|[^~])~([^~\\n]+?)~(?!~)$/, (inner) => {
+        const el = document.createElement('del');
+        el.textContent = inner;
+        return el;
+      })) return;
+
+      // link [text](url) — 이미지 ![](...) 는 제외
+      const linkMatch = /(^|[^!])\\[([^\\]\\n]+)\\]\\(([^)\\n]+)\\)$/.exec(head);
+      if (linkMatch) {
+        const matched = linkMatch[0];
+        const prefix = linkMatch[1] || '';
+        const linkText = linkMatch[2];
+        const url = linkMatch[3];
+        const before = head.slice(0, head.length - matched.length) + prefix;
         const parent = node.parentNode;
         const beforeNode = document.createTextNode(before);
         const afterNode = document.createTextNode(tail);
-        const code = document.createElement('code');
-        code.textContent = codeText;
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.textContent = linkText;
         parent.insertBefore(beforeNode, node);
-        parent.insertBefore(code, node);
+        parent.insertBefore(a, node);
         parent.insertBefore(afterNode, node);
         parent.removeChild(node);
-        const newRange = document.createRange();
-        newRange.setStart(afterNode, 0);
-        newRange.collapse(true);
+        const r = document.createRange();
+        r.setStart(afterNode, 0);
+        r.collapse(true);
         selection.removeAllRanges();
-        selection.addRange(newRange);
+        selection.addRange(r);
+        return;
       }
+    }
+
+    function tryInlineReplace(node, head, tail, regex, makeElement) {
+      const m = regex.exec(head);
+      if (!m) return false;
+      const matched = m[0];
+      const prefix = m[1] || '';
+      const inner = m[2];
+      const before = head.slice(0, head.length - matched.length) + prefix;
+      const parent = node.parentNode;
+      const beforeNode = document.createTextNode(before);
+      const afterNode = document.createTextNode(tail);
+      const el = makeElement(inner);
+      parent.insertBefore(beforeNode, node);
+      parent.insertBefore(el, node);
+      parent.insertBefore(afterNode, node);
+      parent.removeChild(node);
+      const sel = window.getSelection();
+      const r = document.createRange();
+      r.setStart(afterNode, 0);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      return true;
     }
 
     function getBlockContainer(node) {
