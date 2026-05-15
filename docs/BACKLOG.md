@@ -17,8 +17,8 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 
 **P0 (Notion sync 문서에서 자주 쓰임)**
 
-- [~] 체크박스 `- [ ] / - [x]` — parser/serializer/renderer 완료, WYSIWYG autoformat 작업 중
-- [~] 토글 `<details><summary>...</summary>...</details>` — parser/serializer/renderer 완료, WYSIWYG autoformat 작업 중
+- [x] 체크박스 `- [ ] / - [x]`
+- [x] 토글 `<details><summary>...</summary>...</details>`
 - [ ] 이미지 `![alt](url)` + drag-and-drop 업로드
 - [ ] 인라인 색상 `{color="..."}`와 배경색
 
@@ -28,7 +28,7 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 - [ ] 컬럼 `<columns><column>`
 - [ ] 페이지 임베드 `<page url="...">title</page>`
 - [ ] 데이터베이스 임베드 `<database url="...">title</database>`
-- [~] 취소선 `~~text~~` / `~text~` — renderer 완료, autoformat 작업 중
+- [x] 취소선 `~~text~~` / `~text~`
 - [ ] 밑줄 `<span underline="true">text</span>`
 
 **P2**
@@ -43,10 +43,11 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 
 ## C 편집 UX
 
-- [ ] Slash command `/` 입력 시 블록 타입 메뉴
+- [x] Slash command `/` 입력 시 블록 타입 메뉴
 - [ ] 블록 좌측 hover handle + drag로 순서 변경
-- [ ] `**`, `*`, `~~` 자동 변환 (현재는 백틱만)
-- [ ] `#`, `##`, `-`, `1.`, `>` 입력 + 스페이스로 블록 타입 변환
+- [x] `**`, `*`, `_`, `~~`, `~`, `[](url)` 인라인 자동 변환
+- [x] `#`, `##`, `-`, `*`, `+`, `1.`, `[]`, `"`, `>` 입력 + 스페이스로 블록 타입 변환
+- [x] Cmd/Ctrl+Shift+S 로 취소선 토글 (Notion 호환)
 - [ ] Cmd+Shift+숫자로 heading 토글 (Notion 호환)
 - [ ] Paste 시 markdown 자동 변환
 - [ ] Drag 이미지 → `![]()` 자동 삽입

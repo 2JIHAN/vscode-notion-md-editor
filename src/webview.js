@@ -243,25 +243,55 @@ function renderWysiwygEditor(markdown) {
     h1, h2, h3 { margin: 1.25em 0 0.55em; }
     p { margin: 0.7em 0; }
     .callout-content { outline: none; }
+    .slash-menu {
+      background: var(--nme-bg-auto);
+      border: 1px solid var(--nme-border-auto);
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      max-height: 280px;
+      max-width: 320px;
+      min-width: 220px;
+      overflow-y: auto;
+      padding: 6px;
+      position: absolute;
+      z-index: 1000;
+    }
+    .slash-menu.hidden { display: none; }
+    .slash-menu .slash-item {
+      align-items: center;
+      border-radius: 4px;
+      color: var(--nme-fg-auto);
+      cursor: pointer;
+      display: flex;
+      font-size: 13px;
+      gap: 8px;
+      padding: 6px 10px;
+    }
+    .slash-menu .slash-item .slash-icon {
+      color: var(--nme-muted-auto);
+      flex-shrink: 0;
+      font-size: 14px;
+      width: 18px;
+    }
+    .slash-menu .slash-item.active,
+    .slash-menu .slash-item:hover {
+      background: var(--nme-button-hover-auto);
+    }
+    .slash-menu .slash-empty {
+      color: var(--nme-muted-auto);
+      font-size: 12px;
+      padding: 8px 10px;
+    }
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <button data-command="h1">H1</button>
-    <button data-command="h2">H2</button>
-    <button data-command="bold"><strong>B</strong></button>
-    <button data-command="code">Code</button>
-    <select id="calloutKind" title="Callout kind">
-      <option value="success">✅ 성공 기준</option>
-      <option value="warning">⚠️ 주의</option>
-      <option value="info">💡 정보</option>
-    </select>
-    <button data-command="callout">Callout</button>
     <span class="spacer"></span>
     <span class="status" id="status">Saved</span>
     <button id="themeToggle" title="Toggle theme">Auto</button>
   </div>
   <main id="editor" contenteditable="true" spellcheck="true">${body}</main>
+  <div id="slashMenu" class="slash-menu hidden" role="listbox" aria-label="블록 삽입"></div>
   <script>
     const vscode = acquireVsCodeApi();
     const editor = document.getElementById('editor');
@@ -287,16 +317,33 @@ function renderWysiwygEditor(markdown) {
       vscode.setState({ theme: THEMES[themeIndex] });
     });
 
-    document.querySelector('.toolbar').addEventListener('click', (event) => {
-      const button = event.target.closest('button[data-command]');
-      if (!button) return;
-      runCommand(button.dataset.command);
-    });
+    // Slash menu state. null 일 때 닫힘.
+    // { node, offset, filter, index, items, block }
+    let slashState = null;
+    const slashMenu = document.getElementById('slashMenu');
 
     editor.addEventListener('keydown', handleKeyDown);
     editor.addEventListener('input', () => {
+      if (slashState) {
+        updateSlashFilter();
+      } else {
+        detectSlashTrigger();
+      }
       runAutoformat();
       scheduleUpdate();
+    });
+    document.addEventListener('mousedown', (event) => {
+      if (slashState && !slashMenu.contains(event.target)) {
+        closeSlashMenu();
+      }
+    });
+    slashMenu.addEventListener('mousedown', (event) => {
+      const item = event.target.closest('.slash-item');
+      if (!item) return;
+      event.preventDefault();
+      const id = item.dataset.id;
+      const chosen = SLASH_ITEMS.find(it => it.id === id);
+      if (chosen) selectSlashItem(chosen);
     });
     editor.addEventListener('paste', (event) => {
       event.preventDefault();
@@ -312,6 +359,32 @@ function renderWysiwygEditor(markdown) {
 
     function handleKeyDown(event) {
       const mod = event.metaKey || event.ctrlKey;
+      // 슬래시 메뉴가 열려 있을 때: 방향키 / Enter / Esc 가로채기
+      if (slashState && !event.isComposing) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          moveSlashIndex(1);
+          return;
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          moveSlashIndex(-1);
+          return;
+        }
+        if (event.key === 'Enter') {
+          const filtered = filteredSlashItems();
+          if (filtered.length > 0) {
+            event.preventDefault();
+            selectSlashItem(filtered[slashState.index]);
+            return;
+          }
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeSlashMenu();
+          return;
+        }
+      }
       if (mod && !event.shiftKey && event.key === 'z') {
         event.preventDefault();
         document.execCommand('undo');
@@ -339,6 +412,12 @@ function renderWysiwygEditor(markdown) {
       if (mod && !event.shiftKey && event.key === 'i') {
         event.preventDefault();
         document.execCommand('italic');
+        scheduleUpdate();
+        return;
+      }
+      if (mod && event.shiftKey && (event.key === 'S' || event.key === 's')) {
+        event.preventDefault();
+        document.execCommand('strikeThrough');
         scheduleUpdate();
         return;
       }
@@ -452,21 +531,284 @@ function renderWysiwygEditor(markdown) {
       selection.addRange(newRange);
     }
 
-    function runCommand(command) {
-      editor.focus();
-      if (command === 'h1') document.execCommand('formatBlock', false, 'h1');
-      if (command === 'h2') document.execCommand('formatBlock', false, 'h2');
-      if (command === 'bold') document.execCommand('bold');
-      if (command === 'code') toggleInlineCode();
-      if (command === 'callout') insertCallout();
-      scheduleUpdate();
-    }
-
-    function insertCallout() {
-      const kind = callouts[document.getElementById('calloutKind').value];
+    function insertCalloutKind(kindKey) {
+      const kind = callouts[kindKey];
+      if (!kind) return;
       const html = '<div class="callout ' + kind.color + '" data-icon="' + kind.icon + '" data-color="' + kind.color + '"><div class="callout-icon">' + kind.icon + '</div><div class="callout-content"><p><strong>' + kind.title + '</strong></p><p><br></p></div></div>';
       document.execCommand('insertHTML', false, html);
     }
+
+    // ─── 슬래시 메뉴 ──────────────────────────────────────────────────────
+    const SLASH_ITEMS = [
+      { id: 'h1', label: 'H1 제목', icon: 'H1', keywords: 'h1 heading 제목 큰', action: (block) => replaceBlockWithEmpty(block, 'h1') },
+      { id: 'h2', label: 'H2 제목', icon: 'H2', keywords: 'h2 heading 제목 중간', action: (block) => replaceBlockWithEmpty(block, 'h2') },
+      { id: 'h3', label: 'H3 제목', icon: 'H3', keywords: 'h3 heading 제목 작은', action: (block) => replaceBlockWithEmpty(block, 'h3') },
+      { id: 'ul', label: '불릿 리스트', icon: '•', keywords: 'bullet ul list 글머리 리스트', action: (block) => replaceBlockWithList(block, false) },
+      { id: 'ol', label: '번호 리스트', icon: '1.', keywords: 'number ordered ol 번호 리스트', action: (block) => replaceBlockWithList(block, true) },
+      { id: 'todo', label: '할 일 체크박스', icon: '☑', keywords: 'todo checkbox check 체크 할일', action: (block) => replaceBlockWithTodo(block) },
+      { id: 'quote', label: '인용', icon: '"', keywords: 'quote blockquote 인용', action: (block) => replaceBlockWithEmpty(block, 'blockquote') },
+      { id: 'code', label: '코드 블록', icon: '&lt;/&gt;', keywords: 'code pre 코드 블록', action: (block) => replaceBlockWithCode(block) },
+      { id: 'divider', label: '구분선', icon: '—', keywords: 'divider hr 구분선', action: (block) => replaceBlockWithDivider(block) },
+      { id: 'toggle', label: '토글', icon: '▸', keywords: 'toggle details 토글', action: (block) => replaceBlockWithToggle(block) },
+      { id: 'callout-success', label: '✅ 콜아웃 - 성공', icon: '✅', keywords: 'callout success 콜아웃 성공', action: (block) => replaceBlockWithCallout(block, 'success') },
+      { id: 'callout-warning', label: '⚠️ 콜아웃 - 주의', icon: '⚠️', keywords: 'callout warning 콜아웃 주의', action: (block) => replaceBlockWithCallout(block, 'warning') },
+      { id: 'callout-info', label: '💡 콜아웃 - 정보', icon: '💡', keywords: 'callout info 콜아웃 정보', action: (block) => replaceBlockWithCallout(block, 'info') }
+    ];
+
+    function detectSlashTrigger() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      if (!range.collapsed) return;
+      const node = range.startContainer;
+      if (node.nodeType !== Node.TEXT_NODE) return;
+      const offset = range.startOffset;
+      if (offset === 0) return;
+      if (node.textContent[offset - 1] !== '/') return;
+      if (getAncestor(node, 'CODE') || getAncestor(node, 'PRE')) return;
+      // 직전 글자가 공백/줄시작이어야 함 — 중간에서 우연히 / 친 경우 트리거 안되게
+      if (offset >= 2) {
+        const ch = node.textContent[offset - 2];
+        if (ch && !/[\\s]/.test(ch)) return;
+      }
+      const block = getBlockContainer(node);
+      if (!block || block === editor) return;
+      openSlashMenu(node, offset - 1, block);
+    }
+
+    function openSlashMenu(node, offset, block) {
+      slashState = { node: node, offset: offset, filter: '', index: 0, block: block };
+      renderSlashMenu();
+    }
+
+    function closeSlashMenu() {
+      slashState = null;
+      slashMenu.classList.add('hidden');
+    }
+
+    function filteredSlashItems() {
+      if (!slashState) return [];
+      const f = slashState.filter.toLowerCase();
+      if (!f) return SLASH_ITEMS;
+      return SLASH_ITEMS.filter((item) =>
+        item.label.toLowerCase().includes(f) || item.keywords.toLowerCase().includes(f)
+      );
+    }
+
+    function moveSlashIndex(delta) {
+      if (!slashState) return;
+      const list = filteredSlashItems();
+      if (list.length === 0) return;
+      slashState.index = (slashState.index + delta + list.length) % list.length;
+      renderSlashMenu();
+    }
+
+    function updateSlashFilter() {
+      if (!slashState) return;
+      const node = slashState.node;
+      // 노드가 사라졌거나 위치가 의심스러우면 닫는다.
+      if (!node || !document.contains(node)) {
+        closeSlashMenu();
+        return;
+      }
+      const sel = window.getSelection();
+      if (!sel.rangeCount) {
+        closeSlashMenu();
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const cursorOffset = (range.startContainer === node) ? range.startOffset : null;
+      if (cursorOffset === null || cursorOffset < slashState.offset + 1) {
+        closeSlashMenu();
+        return;
+      }
+      // / 다음부터 커서까지의 텍스트가 필터
+      const fullText = node.textContent;
+      // / 위치 확인 - 사라졌으면 닫기
+      if (fullText[slashState.offset] !== '/') {
+        closeSlashMenu();
+        return;
+      }
+      slashState.filter = fullText.slice(slashState.offset + 1, cursorOffset);
+      // 필터에 공백 들어오면 일반 텍스트로 간주하고 닫는다.
+      if (/\\s/.test(slashState.filter)) {
+        closeSlashMenu();
+        return;
+      }
+      slashState.index = 0;
+      renderSlashMenu();
+    }
+
+    function renderSlashMenu() {
+      if (!slashState) return;
+      const items = filteredSlashItems();
+      if (items.length === 0) {
+        slashMenu.innerHTML = '<div class="slash-empty">일치하는 블록 없음</div>';
+      } else {
+        slashMenu.innerHTML = items.map((item, i) => {
+          const cls = 'slash-item' + (i === slashState.index ? ' active' : '');
+          return '<div class="' + cls + '" role="option" data-id="' + item.id + '"><span class="slash-icon">' + item.icon + '</span><span>' + item.label + '</span></div>';
+        }).join('');
+      }
+      positionSlashMenuAtCaret();
+      slashMenu.classList.remove('hidden');
+    }
+
+    function positionSlashMenuAtCaret() {
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0).cloneRange();
+      range.collapse(true);
+      const rect = range.getBoundingClientRect();
+      const fallbackRect = slashState.block.getBoundingClientRect();
+      const top = (rect.top || fallbackRect.top) + (rect.height || 20) + window.scrollY + 4;
+      const left = (rect.left || fallbackRect.left) + window.scrollX;
+      slashMenu.style.top = top + 'px';
+      slashMenu.style.left = left + 'px';
+    }
+
+    function selectSlashItem(item) {
+      if (!slashState || !item) return;
+      const { node, offset, block } = slashState;
+      // / + filter 텍스트 제거
+      const sel = window.getSelection();
+      const cursorOffset = sel.rangeCount && sel.getRangeAt(0).startContainer === node
+        ? sel.getRangeAt(0).startOffset : node.textContent.length;
+      node.textContent = node.textContent.slice(0, offset) + node.textContent.slice(cursorOffset);
+      // 커서를 / 자리에 복원
+      const r = document.createRange();
+      r.setStart(node, offset);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+      closeSlashMenu();
+      // 액션 수행
+      item.action(block);
+      scheduleUpdate();
+    }
+
+    function isBlockEffectivelyEmpty(block) {
+      const text = block.textContent.replace(/\\u200b/g, '').trim();
+      return text === '';
+    }
+
+    function replaceOrInsert(block, newEl) {
+      if (isBlockEffectivelyEmpty(block)) {
+        block.replaceWith(newEl);
+      } else {
+        block.parentNode.insertBefore(newEl, block.nextSibling);
+      }
+    }
+
+    function placeCursorIn(target) {
+      const sel = window.getSelection();
+      const r = document.createRange();
+      r.setStart(target, 0);
+      r.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+
+    function replaceBlockWithEmpty(block, tagName) {
+      const el = document.createElement(tagName);
+      el.appendChild(document.createElement('br'));
+      replaceOrInsert(block, el);
+      placeCursorIn(el);
+    }
+
+    function replaceBlockWithList(block, ordered) {
+      const wrap = document.createElement(ordered ? 'ol' : 'ul');
+      const li = document.createElement('li');
+      li.appendChild(document.createElement('br'));
+      wrap.appendChild(li);
+      replaceOrInsert(block, wrap);
+      placeCursorIn(li);
+    }
+
+    function replaceBlockWithTodo(block) {
+      const ul = document.createElement('ul');
+      ul.className = 'todo-list';
+      const li = document.createElement('li');
+      li.className = 'todo-item';
+      li.setAttribute('data-checked', 'false');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.contentEditable = 'false';
+      const span = document.createElement('span');
+      span.className = 'todo-text';
+      span.appendChild(document.createElement('br'));
+      li.appendChild(cb);
+      li.appendChild(span);
+      ul.appendChild(li);
+      replaceOrInsert(block, ul);
+      placeCursorIn(span);
+    }
+
+    function replaceBlockWithCode(block) {
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = '';
+      pre.appendChild(code);
+      replaceOrInsert(block, pre);
+      placeCursorIn(code);
+    }
+
+    function replaceBlockWithDivider(block) {
+      const hr = document.createElement('hr');
+      const newP = document.createElement('p');
+      newP.appendChild(document.createElement('br'));
+      replaceOrInsert(block, hr);
+      hr.parentNode.insertBefore(newP, hr.nextSibling);
+      placeCursorIn(newP);
+    }
+
+    function replaceBlockWithToggle(block) {
+      const det = document.createElement('details');
+      det.className = 'toggle';
+      det.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = '토글';
+      const content = document.createElement('div');
+      content.className = 'toggle-content';
+      const p = document.createElement('p');
+      p.appendChild(document.createElement('br'));
+      content.appendChild(p);
+      det.appendChild(summary);
+      det.appendChild(content);
+      replaceOrInsert(block, det);
+      const sel = window.getSelection();
+      const r = document.createRange();
+      r.selectNodeContents(summary);
+      sel.removeAllRanges();
+      sel.addRange(r);
+    }
+
+    function replaceBlockWithCallout(block, kindKey) {
+      const kind = callouts[kindKey];
+      if (!kind) return;
+      const wrapDiv = document.createElement('div');
+      wrapDiv.className = 'callout ' + kind.color;
+      wrapDiv.dataset.icon = kind.icon;
+      wrapDiv.dataset.color = kind.color;
+      const iconDiv = document.createElement('div');
+      iconDiv.className = 'callout-icon';
+      iconDiv.textContent = kind.icon;
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'callout-content';
+      const titleP = document.createElement('p');
+      const titleStrong = document.createElement('strong');
+      titleStrong.textContent = kind.title;
+      titleP.appendChild(titleStrong);
+      const bodyP = document.createElement('p');
+      bodyP.appendChild(document.createElement('br'));
+      contentDiv.appendChild(titleP);
+      contentDiv.appendChild(bodyP);
+      wrapDiv.appendChild(iconDiv);
+      wrapDiv.appendChild(contentDiv);
+      replaceOrInsert(block, wrapDiv);
+      placeCursorIn(bodyP);
+    }
+    // ─── 슬래시 메뉴 끝 ────────────────────────────────────────────────────
 
     function toggleInlineCode() {
       const selection = window.getSelection();
