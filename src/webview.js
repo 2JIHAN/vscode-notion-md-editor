@@ -31,7 +31,7 @@ const COMMON_STYLE = `
     --nme-button-bg-auto: rgba(55, 53, 47, 0.08);
     --nme-button-fg-auto: #37352f;
     --nme-button-hover-auto: rgba(55, 53, 47, 0.16);
-    --nme-font-sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", Roboto, sans-serif;
+    --nme-font-sans: "Inter", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --nme-font-mono: Menlo, "D2Coding", ui-monospace, SFMono-Regular, Monaco, Consolas, "Courier New", monospace;
   }
   [data-theme="light"] {
@@ -110,10 +110,12 @@ const COMMON_STYLE = `
     font-size: 1em;
   }
   blockquote {
-    border-left: 4px solid var(--nme-quote-border-auto);
-    color: var(--nme-quote-fg-auto);
-    margin: 1em 0;
-    padding: 0.1em 1em;
+    background: transparent;
+    border-left: 3px solid var(--nme-fg-auto);
+    color: var(--nme-fg-auto);
+    font-size: 1.15em;
+    margin: 1.25em 0;
+    padding: 0.1em 0 0.1em 0.95em;
   }
   .callout {
     border-radius: 10px;
