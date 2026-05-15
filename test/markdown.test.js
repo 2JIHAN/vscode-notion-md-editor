@@ -127,6 +127,45 @@ test('stripZwsAndTrim: whitespace-only is not empty after trim', () => {
   assert.strictEqual(stripZwsAndTrim('   '), '');
 });
 
+test('parse divider produces divider block', () => {
+  const blocks = parse('---\n');
+  assert.deepStrictEqual(blocks, [{ type: 'divider' }]);
+});
+
+test('parse divider with surrounding blocks', () => {
+  const blocks = parse('# Title\n\n---\n\nSome text\n');
+  assert.strictEqual(blocks.length, 3);
+  assert.strictEqual(blocks[0].type, 'heading');
+  assert.strictEqual(blocks[1].type, 'divider');
+  assert.strictEqual(blocks[2].type, 'paragraph');
+});
+
+test('serialize divider produces ---', () => {
+  const md = serialize([{ type: 'divider' }]);
+  assert.strictEqual(md, '---\n');
+});
+
+test('divider round-trip: parse → serialize → parse', () => {
+  const original = '# Intro\n\n---\n\nBody text\n';
+  const ast = parse(original);
+  const serialized = serialize(ast);
+  const reparsed = parse(serialized);
+  assert.deepStrictEqual(reparsed, ast);
+});
+
+test('renderHtml divider emits hr', () => {
+  const html = renderHtml('---\n');
+  assert.ok(html.includes('<hr>'));
+});
+
+test('parse does not treat frontmatter --- as divider', () => {
+  const md = '---\nkey: value\n---\n\n# Title\n';
+  const blocks = parse(md);
+  assert.strictEqual(blocks[0].type, 'frontmatter');
+  assert.strictEqual(blocks[1].type, 'heading');
+  assert.strictEqual(blocks.length, 2);
+});
+
 let passed = 0;
 let failed = 0;
 for (const { name, fn } of tests) {

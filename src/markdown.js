@@ -16,6 +16,7 @@
  *   { type: 'quote', text }
  *   { type: 'code', lang, content }
  *   { type: 'callout', icon, color, blocks: Block[] }
+ *   { type: 'divider' }
  *   { type: 'html', raw }
  */
 
@@ -82,6 +83,12 @@ function parse(markdown) {
       continue;
     }
 
+    if (matchDivider(line)) {
+      blocks.push({ type: 'divider' });
+      i++;
+      continue;
+    }
+
     if (isStandaloneHtmlBlock(line)) {
       blocks.push({ type: 'html', raw: line });
       i++;
@@ -124,6 +131,8 @@ function serializeBlock(block) {
       const inner = serialize(block.blocks).trimEnd();
       return `<callout icon="${block.icon}" color="${block.color}">\n${inner}\n</callout>`;
     }
+    case 'divider':
+      return '---';
     case 'html':
       return block.raw.trim();
     default:
@@ -164,6 +173,8 @@ function renderBlock(block) {
       const inner = renderBlocks(block.blocks);
       return `<div class="callout ${color}" data-icon="${icon}" data-color="${color}"><div class="callout-icon">${icon}</div><div class="callout-content">${inner}</div></div>`;
     }
+    case 'divider':
+      return '<hr>';
     case 'html':
       return block.raw;
     default:
@@ -329,11 +340,16 @@ function collectParagraph(lines, start) {
     if (matchUnorderedItem(line) !== null) break;
     if (matchOrderedItem(line) !== null) break;
     if (matchQuote(line) !== null) break;
+    if (matchDivider(line)) break;
     if (isStandaloneHtmlBlock(line)) break;
     collected.push(line.trim());
     i++;
   }
   return { text: collected.join(' '), nextIndex: i };
+}
+
+function matchDivider(line) {
+  return /^(-{3,}|\*{3,}|_{3,})\s*$/.test(line);
 }
 
 function isStandaloneHtmlBlock(line) {

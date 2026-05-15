@@ -130,6 +130,11 @@ const COMMON_STYLE = `
   .callout.gray_bg { background: rgba(127, 127, 127, 0.14); }
   .callout-content > :first-child { margin-top: 0; }
   .callout-content > :last-child { margin-bottom: 0; }
+  hr {
+    border: none;
+    border-top: 1px solid var(--nme-border-auto);
+    margin: 1.5em 0;
+  }
 `;
 
 function renderPreview(markdown) {
@@ -504,6 +509,19 @@ function renderWysiwygEditor(markdown) {
             selection.addRange(newRange);
             return;
           }
+          if (blockText.trim() === '---') {
+            const hr = document.createElement('hr');
+            const newP = document.createElement('p');
+            newP.appendChild(document.createElement('br'));
+            block.replaceWith(hr);
+            hr.parentNode.insertBefore(newP, hr.nextSibling);
+            const newRange = document.createRange();
+            newRange.setStart(newP, 0);
+            newRange.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
+            return;
+          }
         }
       }
 
@@ -577,6 +595,7 @@ function renderWysiwygEditor(markdown) {
         const content = (codeChild ? codeChild.textContent : node.textContent).replace(/\\n+$/, '');
         return '\\u0060\\u0060\\u0060' + lang + '\\n' + content + '\\n\\u0060\\u0060\\u0060';
       }
+      if (tag === 'hr') return '---';
       if (tag === 'ul') return Array.from(node.children).map(li => '- ' + inlineMarkdown(li)).join('\\n');
       if (tag === 'ol') return Array.from(node.children).map((li, index) => (index + 1) + '. ' + inlineMarkdown(li)).join('\\n');
       return inlineMarkdown(node).trim();
