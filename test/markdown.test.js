@@ -166,6 +166,39 @@ test('parse does not treat frontmatter --- as divider', () => {
   assert.strictEqual(blocks.length, 2);
 });
 
+test('paragraph immediately followed by --- (no blank line) parses as [paragraph, divider]', () => {
+  // setext 헤딩 미지원: paragraph 뒤 --- 는 항상 divider 로 처리한다.
+  const blocks = parse('Some text\n---\n');
+  assert.strictEqual(blocks.length, 2);
+  assert.deepStrictEqual(blocks[0], { type: 'paragraph', text: 'Some text' });
+  assert.deepStrictEqual(blocks[1], { type: 'divider' });
+});
+
+test('list immediately followed by --- closes list and leaves divider standalone', () => {
+  const blocks = parse('- a\n- b\n---\n');
+  assert.strictEqual(blocks.length, 2);
+  assert.deepStrictEqual(blocks[0], { type: 'list', ordered: false, items: ['a', 'b'] });
+  assert.deepStrictEqual(blocks[1], { type: 'divider' });
+});
+
+test('--- after heading parses as [heading, divider, paragraph]', () => {
+  const blocks = parse('# Title\n---\nbody\n');
+  assert.strictEqual(blocks.length, 3);
+  assert.deepStrictEqual(blocks[0], { type: 'heading', level: 1, text: 'Title' });
+  assert.deepStrictEqual(blocks[1], { type: 'divider' });
+  assert.deepStrictEqual(blocks[2], { type: 'paragraph', text: 'body' });
+});
+
+test('*** and ___ parse as divider and serialize back to ---', () => {
+  const asterisk = parse('***\n');
+  assert.deepStrictEqual(asterisk, [{ type: 'divider' }]);
+  assert.strictEqual(serialize(asterisk), '---\n');
+
+  const underscore = parse('___\n');
+  assert.deepStrictEqual(underscore, [{ type: 'divider' }]);
+  assert.strictEqual(serialize(underscore), '---\n');
+});
+
 let passed = 0;
 let failed = 0;
 for (const { name, fn } of tests) {

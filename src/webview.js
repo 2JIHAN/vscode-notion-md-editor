@@ -509,7 +509,7 @@ function renderWysiwygEditor(markdown) {
             selection.addRange(newRange);
             return;
           }
-          if (blockText.trim() === '---') {
+          if (/^(-{3,}|\*{3,}|_{3,})$/.test(blockText.trim())) {
             const hr = document.createElement('hr');
             const newP = document.createElement('p');
             newP.appendChild(document.createElement('br'));
