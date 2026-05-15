@@ -17,8 +17,8 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 
 **P0 (Notion sync 문서에서 자주 쓰임)**
 
-- [ ] 체크박스 `- [ ] / - [x]`
-- [ ] 토글 `<details><summary>...</summary>...</details>`
+- [~] 체크박스 `- [ ] / - [x]` — parser/serializer/renderer 완료, WYSIWYG autoformat 작업 중
+- [~] 토글 `<details><summary>...</summary>...</details>` — parser/serializer/renderer 완료, WYSIWYG autoformat 작업 중
 - [ ] 이미지 `![alt](url)` + drag-and-drop 업로드
 - [ ] 인라인 색상 `{color="..."}`와 배경색
 
@@ -28,7 +28,7 @@ parser, serializer, renderer, WYSIWYG 인터랙션을 함께 갖춘다.
 - [ ] 컬럼 `<columns><column>`
 - [ ] 페이지 임베드 `<page url="...">title</page>`
 - [ ] 데이터베이스 임베드 `<database url="...">title</database>`
-- [ ] 취소선 `~~text~~`
+- [~] 취소선 `~~text~~` / `~text~` — renderer 완료, autoformat 작업 중
 - [ ] 밑줄 `<span underline="true">text</span>`
 
 **P2**

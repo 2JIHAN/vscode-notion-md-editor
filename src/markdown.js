@@ -13,9 +13,11 @@
  *   { type: 'heading', level, text }
  *   { type: 'paragraph', text }
  *   { type: 'list', ordered, items: string[] }
+ *   { type: 'todo', items: [{ text: string, checked: boolean }] }
  *   { type: 'quote', text }
  *   { type: 'code', lang, content }
  *   { type: 'callout', icon, color, blocks: Block[] }
+ *   { type: 'toggle', summary: string, blocks: Block[] }
  *   { type: 'divider' }
  *   { type: 'html', raw }
  */
@@ -53,6 +55,17 @@ function parse(markdown) {
       continue;
     }
 
+    if (matchToggleOpen(line)) {
+      const toggle = collectToggle(lines, i);
+      blocks.push({
+        type: 'toggle',
+        summary: toggle.summary,
+        blocks: parse(toggle.body)
+      });
+      i = toggle.nextIndex;
+      continue;
+    }
+
     const fence = matchCodeFence(line);
     if (fence) {
       const code = collectCodeBlock(lines, i, fence);
@@ -65,6 +78,13 @@ function parse(markdown) {
     if (heading) {
       blocks.push({ type: 'heading', level: heading.level, text: heading.text });
       i++;
+      continue;
+    }
+
+    if (matchTodoItem(line) !== null) {
+      const todo = collectTodo(lines, i);
+      blocks.push({ type: 'todo', items: todo.items });
+      i = todo.nextIndex;
       continue;
     }
 
@@ -120,6 +140,10 @@ function serializeBlock(block) {
       return block.items
         .map((item, index) => (block.ordered ? `${index + 1}. ${item.trim()}` : `- ${item.trim()}`))
         .join('\n');
+    case 'todo':
+      return block.items
+        .map((item) => `- [${item.checked ? 'x' : ' '}] ${item.text.trim()}`)
+        .join('\n');
     case 'quote':
       return block.text
         .split('\n')
@@ -130,6 +154,12 @@ function serializeBlock(block) {
     case 'callout': {
       const inner = serialize(block.blocks).trimEnd();
       return `<callout icon="${block.icon}" color="${block.color}">\n${inner}\n</callout>`;
+    }
+    case 'toggle': {
+      const inner = serialize(block.blocks).trimEnd();
+      const summary = block.summary || '';
+      const innerPart = inner ? `\n\n${inner}\n` : '\n';
+      return `<details>\n<summary>${summary}</summary>${innerPart}</details>`;
     }
     case 'divider':
       return '---';
@@ -163,6 +193,16 @@ function renderBlock(block) {
       const items = block.items.map((item) => `<li>${renderInline(item)}</li>`).join('');
       return `<${tag}>${items}</${tag}>`;
     }
+    case 'todo': {
+      const items = block.items
+        .map((item) => {
+          const checked = item.checked ? 'checked' : '';
+          const cls = item.checked ? 'todo-item checked' : 'todo-item';
+          return `<li class="${cls}" data-checked="${item.checked}"><input type="checkbox" ${checked}><span class="todo-text">${renderInline(item.text)}</span></li>`;
+        })
+        .join('');
+      return `<ul class="todo-list">${items}</ul>`;
+    }
     case 'quote':
       return `<blockquote>${renderInline(block.text)}</blockquote>`;
     case 'code':
@@ -172,6 +212,11 @@ function renderBlock(block) {
       const color = sanitizeColor(block.color);
       const inner = renderBlocks(block.blocks);
       return `<div class="callout ${color}" data-icon="${icon}" data-color="${color}"><div class="callout-icon">${icon}</div><div class="callout-content">${inner}</div></div>`;
+    }
+    case 'toggle': {
+      const summary = escapeHtml(block.summary || '');
+      const inner = renderBlocks(block.blocks);
+      return `<details class="toggle"><summary>${summary}</summary><div class="toggle-content">${inner}</div></details>`;
     }
     case 'divider':
       return '<hr>';
@@ -187,6 +232,8 @@ function renderInline(text) {
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+    .replace(/~~([^~\n]+)~~/g, '<del>$1</del>')
+    .replace(/(^|[^~])~([^~\n]+)~(?!~)/g, '$1<del>$2</del>')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 }
 
@@ -272,13 +319,70 @@ function matchHeading(line) {
 }
 
 function matchUnorderedItem(line) {
-  const match = /^[-*]\s+(.*)$/.exec(line);
+  const match = /^[-*+]\s+(.*)$/.exec(line);
   return match ? match[1] : null;
 }
 
 function matchOrderedItem(line) {
   const match = /^\d+\.\s+(.*)$/.exec(line);
   return match ? match[1] : null;
+}
+
+function matchTodoItem(line) {
+  const match = /^[-*+]\s+\[([ xX])\]\s+(.*)$/.exec(line);
+  if (!match) return null;
+  return { checked: match[1].toLowerCase() === 'x', text: match[2] };
+}
+
+function collectTodo(lines, start) {
+  const items = [];
+  let i = start;
+  while (i < lines.length) {
+    const todo = matchTodoItem(lines[i]);
+    if (todo === null) break;
+    items.push(todo);
+    i++;
+  }
+  return { items, nextIndex: i };
+}
+
+function matchToggleOpen(line) {
+  return /^<details\b[^>]*>\s*$/.test(line);
+}
+
+function collectToggle(lines, start) {
+  let depth = 1;
+  let i = start + 1;
+  let summary = '';
+  let summaryFound = false;
+  const bodyLines = [];
+  while (i < lines.length) {
+    const line = lines[i];
+    if (matchToggleOpen(line)) {
+      depth++;
+      bodyLines.push(line);
+    } else if (line.trim() === '</details>') {
+      depth--;
+      if (depth === 0) {
+        return { summary, body: bodyLines.join('\n'), nextIndex: i + 1 };
+      }
+      bodyLines.push(line);
+    } else if (!summaryFound) {
+      const sumMatch = /^<summary>([\s\S]*?)<\/summary>\s*$/.exec(line.trim());
+      if (sumMatch) {
+        summary = sumMatch[1];
+        summaryFound = true;
+      } else if (line.trim() !== '') {
+        // 첫 비공백 라인이 summary 가 아니라면 본문으로 흘려보낸다.
+        summaryFound = true;
+        bodyLines.push(line);
+      }
+    } else {
+      bodyLines.push(line);
+    }
+    i++;
+  }
+  return { summary, body: bodyLines.join('\n'), nextIndex: i };
 }
 
 function collectList(lines, start) {
@@ -337,6 +441,9 @@ function collectParagraph(lines, start) {
     if (matchCodeFence(line)) break;
     if (matchCalloutOpen(line)) break;
     if (line.trim() === '</callout>') break;
+    if (matchToggleOpen(line)) break;
+    if (line.trim() === '</details>') break;
+    if (matchTodoItem(line) !== null) break;
     if (matchUnorderedItem(line) !== null) break;
     if (matchOrderedItem(line) !== null) break;
     if (matchQuote(line) !== null) break;

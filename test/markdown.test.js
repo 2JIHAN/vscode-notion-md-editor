@@ -199,6 +199,97 @@ test('*** and ___ parse as divider and serialize back to ---', () => {
   assert.strictEqual(serialize(underscore), '---\n');
 });
 
+test('parse todo list with checked/unchecked items', () => {
+  const blocks = parse('- [ ] alpha\n- [x] beta\n- [X] gamma\n');
+  assert.deepStrictEqual(blocks, [
+    {
+      type: 'todo',
+      items: [
+        { text: 'alpha', checked: false },
+        { text: 'beta', checked: true },
+        { text: 'gamma', checked: true }
+      ]
+    }
+  ]);
+});
+
+test('todo list does not consume plain - items', () => {
+  const blocks = parse('- a\n- b\n');
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].type, 'list');
+});
+
+test('serialize todo emits "- [ ]" / "- [x]"', () => {
+  const md = serialize([{
+    type: 'todo',
+    items: [
+      { text: 'alpha', checked: false },
+      { text: 'beta', checked: true }
+    ]
+  }]);
+  assert.strictEqual(md, '- [ ] alpha\n- [x] beta\n');
+});
+
+test('todo round-trip: parse → serialize → parse', () => {
+  const original = '- [ ] alpha\n- [x] beta\n';
+  const ast = parse(original);
+  const reparsed = parse(serialize(ast));
+  assert.deepStrictEqual(reparsed, ast);
+});
+
+test('renderHtml emits todo list with checkboxes', () => {
+  const html = renderHtml('- [ ] alpha\n- [x] beta\n');
+  assert.ok(html.includes('<ul class="todo-list">'));
+  assert.ok(html.includes('<input type="checkbox" '));
+  assert.ok(html.includes('checked'));
+  assert.ok(html.includes('alpha'));
+});
+
+test('renderHtml strikethrough double tilde', () => {
+  const html = renderHtml('A ~~struck~~ word.');
+  assert.ok(html.includes('<del>struck</del>'));
+});
+
+test('renderHtml strikethrough single tilde', () => {
+  const html = renderHtml('A ~struck~ word.');
+  assert.ok(html.includes('<del>struck</del>'));
+});
+
+test('parse toggle block with summary and body', () => {
+  const md = '<details>\n<summary>제목</summary>\n\n본문 문장\n</details>';
+  const blocks = parse(md);
+  assert.strictEqual(blocks.length, 1);
+  assert.strictEqual(blocks[0].type, 'toggle');
+  assert.strictEqual(blocks[0].summary, '제목');
+  assert.deepStrictEqual(blocks[0].blocks, [{ type: 'paragraph', text: '본문 문장' }]);
+});
+
+test('serialize toggle emits <details><summary> form', () => {
+  const md = serialize([{
+    type: 'toggle',
+    summary: '제목',
+    blocks: [{ type: 'paragraph', text: '본문' }]
+  }]);
+  assert.ok(md.includes('<details>'));
+  assert.ok(md.includes('<summary>제목</summary>'));
+  assert.ok(md.includes('본문'));
+  assert.ok(md.includes('</details>'));
+});
+
+test('toggle round-trip: parse → serialize → parse', () => {
+  const original = '<details>\n<summary>제목</summary>\n\n본문\n</details>';
+  const ast = parse(original);
+  const reparsed = parse(serialize(ast));
+  assert.deepStrictEqual(reparsed, ast);
+});
+
+test('renderHtml emits <details class="toggle">', () => {
+  const html = renderHtml('<details>\n<summary>T</summary>\n\nB\n</details>');
+  assert.ok(html.includes('<details class="toggle">'));
+  assert.ok(html.includes('<summary>T</summary>'));
+  assert.ok(html.includes('<p>B</p>'));
+});
+
 let passed = 0;
 let failed = 0;
 for (const { name, fn } of tests) {
